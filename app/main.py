@@ -30,6 +30,7 @@ log = logging.getLogger("lake_mood")
 
 HERE = Path(__file__).parent
 STALE_MINUTES = 90
+VERDICT_FALLBACK_MINUTES = 60
 FORECAST_HOURS = 12
 HISTORY_DAYS = 7
 
@@ -113,9 +114,10 @@ def now_row(obs, tz):
         return []
     wind = obs.get("wind_mph")
     d = wind_dir_name(obs.get("wind_dir"))
-    # Always show a speed — "calm" on its own hides the number.
+    # Always show a speed — "calm" on its own hides the number. A variable
+    # METAR reports no speed and no direction but can still carry a gust.
     if wind is None:
-        wind_txt = "—"
+        wind_txt = "variable" if obs.get("gust_mph") is not None else "—"
     elif wind < 1:
         wind_txt = "calm · 0 mph"
     else:
@@ -131,6 +133,31 @@ def now_row(obs, tz):
         ("sky", obs.get("sky") or obs.get("description") or "—"),
         ("observed", fmt_clock(obs.get("ts"), tz)),
     ]
+
+
+def has_wind(o):
+    """True if the observation reports a sustained speed or a gust."""
+    return bool(o) and (o.get("wind_mph") is not None or o.get("gust_mph") is not None)
+
+
+def verdict_observation(obs, rows, minutes=VERDICT_FALLBACK_MINUTES, now=None):
+    """The observation the verdict should judge, plus whether it is a fallback.
+
+    A variable-wind METAR can land with neither wind_mph nor gust_mph, which
+    would blank the banner. When that happens, reach back to the newest
+    observation within `minutes` that reports either — the page stamps its
+    time into the note so the reading is not mistaken for the current one.
+    """
+    if has_wind(obs):
+        return obs, False
+    cutoff = (now or datetime.now(timezone.utc)) - timedelta(minutes=minutes)
+    for r in reversed(list(rows or ())):
+        d = _dt(r.get("ts"))
+        if d is None or d.astimezone(timezone.utc) < cutoff:
+            continue
+        if has_wind(r):
+            return r, True
+    return obs, False
 
 
 def recent_hours(rows, tz, hours=3):
@@ -256,11 +283,13 @@ def index():
          "hour_label": fmt_hour(r.get("start_ts"), tz)}
         for r in fc_rows[:3]
     ]
+    v_obs, v_fallback = verdict_observation(obs, recent)
     verdict = kayak_verdict(
-        (obs or {}).get("wind_mph"),
-        (obs or {}).get("gust_mph"),
-        (obs or {}).get("wind_dir"),
+        (v_obs or {}).get("wind_mph"),
+        (v_obs or {}).get("gust_mph"),
+        (v_obs or {}).get("wind_dir"),
         next3,
+        at=fmt_clock((v_obs or {}).get("ts"), tz) if v_fallback else None,
     )
 
     _, wind, gust = hourly_buckets(recent, 24)

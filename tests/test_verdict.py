@@ -110,6 +110,41 @@ def test_verdict_without_observation():
     assert "No recent observation" in v["note"]
 
 
+def test_verdict_gust_only_uses_the_gust_for_both_thresholds():
+    # Variable-direction outflow: KGPM reports a gust and nothing else.
+    v = kayak_verdict(None, 24.16)
+    assert v["level"] == "whitecaps"
+    assert v["note"] == "wind variable, gusting 24."
+
+
+@pytest.mark.parametrize("gust,level", [
+    # The gust is held against both the sustained and the gust ceiling, so
+    # the bands are tighter than they look: 13 is already chop.
+    (5.0, "flat"),
+    (10.0, "ripples"),
+    (13.0, "chop"),
+    (16.0, "whitecaps"),
+    (24.16, "whitecaps"),
+])
+def test_verdict_gust_only_levels(gust, level):
+    assert kayak_verdict(None, gust)["level"] == level
+
+
+def test_verdict_gust_only_ignores_a_stray_direction():
+    assert kayak_verdict(None, 24.16, 135)["note"] == "wind variable, gusting 24."
+
+
+def test_verdict_gust_only_still_appends_the_storm_sentence():
+    v = kayak_verdict(None, 24.16, None,
+                      [{"pop": 43, "wind_mph": 9, "hour_label": "7 pm"}])
+    assert v["note"].startswith("wind variable, gusting 24. Thunderstorm chance 43%")
+
+
+def test_verdict_stamps_the_observation_time_when_asked():
+    v = kayak_verdict(5.0, None, 135, None, at="5:15 pm")
+    assert v["note"] == "SE 5 mph, no gusts (5:15 pm obs)."
+
+
 # -------------------------------------------------------------------- storms
 
 def test_storm_flag_on_pop():

@@ -135,26 +135,40 @@ def _storm_note(forecast_hours):
     return ""
 
 
-def kayak_verdict(sustained_mph, gust_mph=None, wind_dir=None, forecast_hours=None):
+def kayak_verdict(sustained_mph, gust_mph=None, wind_dir=None, forecast_hours=None,
+                  at=None):
     """Judge whether Mountain Creek Lake is worth putting a boat on.
 
     ``wind_dir`` may be degrees or an already-named compass point.
     ``forecast_hours`` is the next ~3 hourly periods (see ``storm_flag``).
+    ``at`` stamps the note with the observation clock time, for when the page
+    had to reach back past a wind-less observation (e.g. ``(5:15 pm obs)``).
     Returns ``{"level", "label", "note"}``; the page renders the label in the
     accent color followed by the note, e.g. ``flat — SE 6 mph, no gusts.``
     The label is the judgment, so the note adds no advice phrase; it always
     carries a number, so a dead-calm lake reads ``calm (0 mph), no gusts.``
     rather than just "calm". A storm sentence is appended when one applies.
+
+    A METAR with variable wind can report a gust and nothing else. That gust
+    is exactly what a kayaker needs, so it drives both thresholds on its own
+    and the note reads ``wind variable, gusting 24.`` Only an observation
+    with neither number is "no data".
     """
-    if sustained_mph is None:
+    if sustained_mph is None and gust_mph is None:
         return {
             "level": "unknown",
             "label": "no data",
             "note": "No recent observation from KGPM.",
         }
 
-    sustained = float(sustained_mph)
-    gust = sustained if gust_mph is None else max(float(gust_mph), sustained)
+    # Gust-only: judge it as if the gust were also the sustained wind, which
+    # is the conservative reading of a variable-direction outflow.
+    gust_only = sustained_mph is None
+    if gust_only:
+        sustained = gust = float(gust_mph)
+    else:
+        sustained = float(sustained_mph)
+        gust = sustained if gust_mph is None else max(float(gust_mph), sustained)
 
     level, label = _WHITECAPS
     for lvl, lbl, max_sus, max_gust in _LEVELS:
@@ -167,20 +181,25 @@ def kayak_verdict(sustained_mph, gust_mph=None, wind_dir=None, forecast_hours=No
     else:
         name = wind_dir_name(wind_dir)
 
-    # Always state a speed, so "calm" never hides the actual number.
-    calm = sustained < 1
-    if calm:
-        wind_txt = "calm (0 mph)"
+    if gust_only:
+        # No sustained speed and no direction to report — just the gust.
+        core = f"wind variable, gusting {gust:.0f}"
     else:
-        wind_txt = f"{name} {sustained:.0f} mph".strip()
+        # Always state a speed, so "calm" never hides the actual number.
+        calm = sustained < 1
+        if calm:
+            wind_txt = "calm (0 mph)"
+        else:
+            wind_txt = f"{name} {sustained:.0f} mph".strip()
 
-    if gust_mph is None or gust - sustained < 2:
-        gust_txt = ", no gusts"
-    else:
-        wind_txt = "calm (0)" if calm else f"{name} {sustained:.0f}".strip()
-        gust_txt = f" gusting {gust:.0f}"
+        if gust_mph is None or gust - sustained < 2:
+            gust_txt = ", no gusts"
+        else:
+            wind_txt = "calm (0)" if calm else f"{name} {sustained:.0f}".strip()
+            gust_txt = f" gusting {gust:.0f}"
+        core = f"{wind_txt}{gust_txt}"
 
-    note = f"{wind_txt}{gust_txt}."
+    note = f"{core} ({at} obs)." if at else f"{core}."
 
     if storm_flag(forecast_hours):
         extra = _storm_note(forecast_hours)
