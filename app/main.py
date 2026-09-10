@@ -127,6 +127,32 @@ def now_row(obs, tz):
     ]
 
 
+def recent_hours(rows, tz, hours=3):
+    """The last few clock hours as (time, wind, gust), newest first.
+
+    `rows` is the ascending observation list; stations that report more than
+    once an hour collapse to their newest reading for that hour.
+    """
+    seen: dict = {}
+    for r in rows:
+        d = _local(r.get("ts"), tz)
+        if not d:
+            continue
+        key = d.replace(minute=0, second=0, microsecond=0)
+        if key not in seen or d >= seen[key][0]:
+            seen[key] = (d, r)
+    out = []
+    for key in sorted(seen, reverse=True)[:hours]:
+        _, r = seen[key]
+        gust = r.get("gust_mph")
+        out.append({
+            "time": fmt_clock(r.get("ts"), tz),
+            "wind": fmt_num(r.get("wind_mph"), 0),
+            "gust": fmt_num(gust, 0) if gust else "—",
+        })
+    return out
+
+
 def hourly_buckets(rows, hours=24):
     """Bucket observations into the last `hours` clock hours, max per hour.
 
@@ -239,6 +265,7 @@ def index():
         stale=stale,
         stale_minutes=STALE_MINUTES,
         now_rows=now_row(obs, tz),
+        recent_rows=recent_hours(recent, tz),
         wind_spark=sparkline(wind, scale),
         gust_spark=sparkline(gust, scale),
         wind_min=fmt_num(min(present_w), 0) if present_w else "—",

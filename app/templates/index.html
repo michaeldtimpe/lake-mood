@@ -18,105 +18,193 @@
 <link rel="stylesheet" href="/static/tokens.css">
 <style>
   /* page-specific only; canonical tokens live in tokens.css */
+
+  /* --- single pane: the page is a flex column that fills the viewport and
+         never scrolls; only a tab panel may scroll internally. ----------- */
+  html, body { height: 100%; }
   body {
-    font-size: 15.4px;
-    line-height: 1.55;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    font-size: 14.5px;
+    line-height: 1.5;
   }
-  .wrap {
-    max-width: 720px;
-    margin: 0 auto 4rem;
-    padding: 0 1.25rem;
+
+  /* ------------------------------------------------------------ top bar */
+  .page-header {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: baseline;
+    justify-content: flex-start;
+    gap: .75rem;
+    padding: .45rem 1.25rem;
+    border-bottom: 1px solid var(--border);
   }
-  .page-header { max-width: 720px; margin: 0 auto; padding: 16px 1.25rem; }
   h1 {
-    font-size: 1.6rem;
-    font-weight: 600;
-    margin: .25rem 0 .1rem;
-    letter-spacing: -0.01em;
-  }
-  h2 {
     font-size: 1.05rem;
     font-weight: 600;
-    color: var(--accent);
-    margin: 1.9rem 0 .35rem;
+    letter-spacing: -0.01em;
+    margin: 0;
+    flex: 0 0 auto;
   }
-  .sub { color: var(--muted); font-size: 13px; margin: 0 0 1.4rem; }
+  .sub {
+    color: var(--muted);
+    font-size: 12.5px;
+    margin: 0;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
   .sub .stale { color: var(--red); }
+  .page-header .theme-toggle {
+    flex: 0 0 auto;
+    margin-left: auto;
+    font-size: 12.5px;
+    padding: .1rem .5rem;
+  }
+
+  /* ------------------------------------------------------ verdict strip */
   .verdict {
-    font-size: 1.25rem;
-    line-height: 1.45;
-    margin: 0 0 .5rem;
-    border-top: 1px solid var(--border);
+    flex: 0 0 auto;
+    font-size: 1.3rem;
+    line-height: 1.35;
+    margin: 0;
+    padding: .6rem 1.25rem .65rem;
     border-bottom: 1px solid var(--border);
-    padding: 1rem 0;
   }
   .verdict .level { color: var(--accent); font-weight: 600; }
   .verdict .note { color: var(--text); }
 
-  /* table conventions carried over from zoleb server.py */
+  /* --------------------------------------------------------------- tabs */
+  .tabs {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 1.5rem;
+    padding: .3rem 1.25rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .tab {
+    font: inherit;
+    font-size: 13px;
+    letter-spacing: .04em;
+    color: var(--muted);
+    background: none;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    padding: .25rem 0 .3rem;
+    cursor: pointer;
+  }
+  .tab:hover { color: var(--accent); }
+  .tab[aria-selected="true"] {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  /* ------------------------------------------------------------- panels */
+  .panels { flex: 1 1 auto; min-height: 0; }
+  .panel {
+    display: none;
+    height: 100%;
+    box-sizing: border-box;
+    overflow-y: auto;
+    padding: .55rem 1.25rem .8rem;
+  }
+  .panel.is-active { display: block; }
+  .cols {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0 2.5rem;
+    align-items: start;
+  }
+  h2 {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 .3rem;
+  }
+  .col + .col h2:first-child, .stack > * + * { margin-top: 0; }
+  .stack > section + section { margin-top: .9rem; }
+
+  /* ------------------ table conventions carried over from zoleb server.py */
   .tbl { border-top: 1px solid var(--text); border-bottom: 1px solid var(--text); margin: 0; }
-  .tbl table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .tbl table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 13.5px; }
   thead th {
     text-align: left;
     font-weight: 600;
-    font-size: inherit;
+    font-size: 11px;
     letter-spacing: .08em;
     text-transform: uppercase;
-    padding: .8rem 0 .55rem;
+    padding: .35rem 0 .3rem;
     vertical-align: bottom;
     color: var(--text);
   }
-  tbody tr:first-child td { padding-top: .6rem; }
-  tbody tr:last-child td { padding-bottom: .8rem; border-bottom: none; }
+  tbody tr:first-child td { padding-top: .3rem; }
+  tbody tr:last-child td { padding-bottom: .35rem; border-bottom: none; }
   td {
-    padding: .4rem 0;
+    padding: .2rem 0;
     vertical-align: top;
     border-bottom: 1px solid var(--border);
     word-break: break-word;
     color: var(--text);
   }
-  td.k { font-weight: 500; padding-right: 2rem; }
-  td.v, td.n { font-variant-numeric: tabular-nums; padding-right: 1.5rem; }
+  td.k { font-weight: 500; padding-right: 1.5rem; }
+  td.v, td.n { font-variant-numeric: tabular-nums; padding-right: 1rem; }
   th.n { font-variant-numeric: tabular-nums; }
+  td.s { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   tr.good td { color: var(--green); }
+
+  /* fixed layout keeps 12 forecast rows one line tall at any width */
+  col.c-hour { width: 4.6rem; }
+  col.c-temp { width: 3.6rem; }
+  col.c-wind { width: 6.4rem; }
+  col.c-rain { width: 3.6rem; }
+  col.c-key  { width: 9rem; }
+
+  /* ---------------------------------------------------------- sparkline */
   .spark {
     font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     font-size: 15px;
-    line-height: 1.9;
+    line-height: 1.8;
     letter-spacing: .06em;
     white-space: pre;
     overflow-x: auto;
   }
   .spark .lbl { color: var(--muted); letter-spacing: 0; }
-  .spark-meta { color: var(--muted); font-size: 12.5px; margin-top: .35rem; }
+  .spark-meta { color: var(--muted); font-size: 12px; margin: .25rem 0 0; }
+
+  /* ------------------------------------------------------------- footer */
   footer {
-    margin-top: 2.75rem;
-    color: var(--accent);
+    flex: 0 0 auto;
+    color: var(--muted);
     border-top: 1px solid var(--border);
-    padding-top: 1.1rem;
+    padding: .35rem 1.25rem .4rem;
     text-align: center;
-    font-size: 13px;
+    font-size: 12px;
   }
   a { color: var(--accent); }
+
+  /* Phone: stack the two columns. Tables stay tables — they are narrow. */
   @media (max-width: 640px) {
-    thead { display: none; }
-    table, tbody, tr, td { display: block; width: 100% !important; }
-    tbody tr { border-bottom: 1px solid var(--border); padding: .6rem 0; }
-    tbody tr:last-child { border-bottom: none; }
-    td { border: none; padding: .1rem 0; }
-    td.k, td.v, td.n { padding-right: 0; }
+    .page-header { flex-wrap: wrap; }
+    .sub { order: 3; flex: 1 0 100%; }
+    .verdict { font-size: 1.2rem; }
+    .panel { padding-left: 1rem; padding-right: 1rem; }
+    .tabs, .page-header, .verdict, footer { padding-left: 1rem; padding-right: 1rem; }
+    .cols { grid-template-columns: minmax(0, 1fr); gap: .9rem 0; }
+    .tbl table { font-size: 13px; }
+    col.c-hour { width: 4.2rem; }
+    col.c-temp { width: 3.2rem; }
+    col.c-wind { width: 5.6rem; }
+    col.c-rain { width: 3.2rem; }
   }
 </style>
 </head>
 <body>
 
 <header class="page-header">
-  <button id="theme-toggle" class="theme-toggle" type="button"
-          aria-label="Toggle color theme">theme</button>
-</header>
-
-<div class="wrap">
-
   <h1>lake mood</h1>
   <p class="sub">
     mountain creek lake · {{ station }} · updated {{ updated }}
@@ -124,87 +212,175 @@
     <span class="stale">· stale, no observation in {{ stale_minutes }}+ min</span>
     {% endif %}
   </p>
+  <button id="theme-toggle" class="theme-toggle" type="button"
+          aria-label="Toggle color theme">theme</button>
+</header>
 
-  <p class="verdict">
-    <span class="level">{{ verdict.label }}</span>
-    <span class="note">— {{ verdict.note }}</span>
-  </p>
+<p class="verdict">
+  <span class="level">{{ verdict.label }}</span>
+  <span class="note">— {{ verdict.note }}</span>
+</p>
 
-  <h2>now</h2>
-  <div class="tbl">
-    <table>
-      <tbody>
-      {% for k, v in now_rows %}
-        <tr><td class="k">{{ k }}</td><td class="v">{{ v }}</td></tr>
-      {% else %}
-        <tr><td class="k">—</td><td class="v">no observations yet</td></tr>
-      {% endfor %}
-      </tbody>
-    </table>
-  </div>
+<nav class="tabs" role="tablist" aria-label="views">
+  <button class="tab" type="button" role="tab" data-tab="now"
+          aria-controls="panel-now" aria-selected="true">now</button>
+  <button class="tab" type="button" role="tab" data-tab="forecast"
+          aria-controls="panel-forecast" aria-selected="false">next 12h</button>
+  <button class="tab" type="button" role="tab" data-tab="week"
+          aria-controls="panel-week" aria-selected="false">7 days</button>
+</nav>
 
-  <h2>wind, last 24h</h2>
-  <div class="spark"><span class="lbl">wind </span>{{ wind_spark }}
+<main class="panels">
+
+  <section class="panel is-active" id="panel-now" role="tabpanel" aria-label="now">
+    <div class="cols">
+      <div class="col">
+        <h2>current</h2>
+        <div class="tbl">
+          <table>
+            <colgroup><col class="c-key"><col></colgroup>
+            <tbody>
+            {% for k, v in now_rows %}
+              <tr><td class="k">{{ k }}</td><td class="v">{{ v }}</td></tr>
+            {% else %}
+              <tr><td class="k">—</td><td class="v">no observations yet</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="col stack">
+        <section>
+          <h2>wind, last 24h</h2>
+          <div class="spark"><span class="lbl">wind </span>{{ wind_spark }}
 <span class="lbl">gust </span>{{ gust_spark }}</div>
-  <p class="spark-meta">
-    sustained {{ wind_min }}–{{ wind_max }} mph · peak gust {{ gust_max }} mph · one column per hour
-  </p>
+          <p class="spark-meta">
+            sustained {{ wind_min }}–{{ wind_max }} mph · peak gust {{ gust_max }} mph
+            · one column per hour
+          </p>
+        </section>
 
-  <h2>next 12 hours</h2>
-  <div class="tbl">
-    <table>
-      <thead>
-        <tr>
-          <th>hour</th><th class="n">temp</th><th>wind</th><th class="n">rain</th><th>sky</th>
-        </tr>
-      </thead>
-      <tbody>
-      {% for f in forecast %}
-        <tr{% if f.good %} class="good"{% endif %}>
-          <td class="k">{{ f.hour }}</td>
-          <td class="n">{{ f.temp }}</td>
-          <td class="n">{{ f.wind }}</td>
-          <td class="n">{{ f.rain }}</td>
-          <td>{{ f.short }}</td>
-        </tr>
-      {% else %}
-        <tr><td class="k">—</td><td class="n"></td><td class="n"></td><td class="n"></td><td>no forecast yet</td></tr>
-      {% endfor %}
-      </tbody>
-    </table>
-  </div>
+        <section>
+          <h2>last 3 hours</h2>
+          <div class="tbl">
+            <table>
+              <thead>
+                <tr><th>time</th><th class="n">wind</th><th class="n">gust</th></tr>
+              </thead>
+              <tbody>
+              {% for r in recent_rows %}
+                <tr>
+                  <td class="k">{{ r.time }}</td>
+                  <td class="n">{{ r.wind }}</td>
+                  <td class="n">{{ r.gust }}</td>
+                </tr>
+              {% else %}
+                <tr><td class="k">—</td><td class="n"></td><td class="n"></td></tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </div>
+  </section>
 
-  <h2>last 7 days</h2>
-  <div class="tbl">
-    <table>
-      <thead>
-        <tr>
-          <th>date</th><th class="n">high</th><th class="n">low</th>
-          <th class="n">max wind</th><th class="n">max gust</th>
-        </tr>
-      </thead>
-      <tbody>
-      {% for d in days %}
-        <tr>
-          <td class="k">{{ d.date }}</td>
-          <td class="n">{{ d.hi }}</td>
-          <td class="n">{{ d.lo }}</td>
-          <td class="n">{{ d.wind }}</td>
-          <td class="n">{{ d.gust }}</td>
-        </tr>
-      {% else %}
-        <tr><td class="k">—</td><td class="n"></td><td class="n"></td><td class="n"></td><td class="n">no history yet</td></tr>
-      {% endfor %}
-      </tbody>
-    </table>
-  </div>
+  <section class="panel" id="panel-forecast" role="tabpanel" aria-label="next 12 hours">
+    <div class="tbl">
+      <table>
+        <colgroup>
+          <col class="c-hour"><col class="c-temp"><col class="c-wind">
+          <col class="c-rain"><col>
+        </colgroup>
+        <thead>
+          <tr>
+            <th>hour</th><th class="n">temp</th><th>wind</th><th class="n">rain</th><th>sky</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for f in forecast %}
+          <tr{% if f.good %} class="good"{% endif %}>
+            <td class="k">{{ f.hour }}</td>
+            <td class="n">{{ f.temp }}</td>
+            <td class="n">{{ f.wind }}</td>
+            <td class="n">{{ f.rain }}</td>
+            <td class="s">{{ f.short }}</td>
+          </tr>
+        {% else %}
+          <tr><td class="k">—</td><td class="n"></td><td class="n"></td><td class="n"></td><td class="s">no forecast yet</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
 
-  <footer>
-    data: National Weather Service, station {{ station }} · refreshes every 10 min
-  </footer>
+  <section class="panel" id="panel-week" role="tabpanel" aria-label="last 7 days">
+    <div class="tbl">
+      <table>
+        <thead>
+          <tr>
+            <th>date</th><th class="n">high</th><th class="n">low</th>
+            <th class="n">max wind</th><th class="n">max gust</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for d in days %}
+          <tr>
+            <td class="k">{{ d.date }}</td>
+            <td class="n">{{ d.hi }}</td>
+            <td class="n">{{ d.lo }}</td>
+            <td class="n">{{ d.wind }}</td>
+            <td class="n">{{ d.gust }}</td>
+          </tr>
+        {% else %}
+          <tr><td class="k">—</td><td class="n"></td><td class="n"></td><td class="n"></td><td class="n">no history yet</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
 
-</div>
+</main>
 
+<footer>
+  data: National Weather Service, station {{ station }} · refreshes every 10 min
+</footer>
+
+<script>
+  // Tabs: remembered in localStorage and mirrored in the URL hash, so the
+  // 5-minute meta refresh comes back to the tab you were looking at.
+  (function () {
+    var KEY = "lake-mood-tab";
+    var tabs = Array.prototype.slice.call(document.querySelectorAll(".tab"));
+    var names = tabs.map(function (t) { return t.getAttribute("data-tab"); });
+
+    function show(name) {
+      if (names.indexOf(name) < 0) name = names[0];
+      tabs.forEach(function (t) {
+        var on = t.getAttribute("data-tab") === name;
+        t.setAttribute("aria-selected", on ? "true" : "false");
+        var panel = document.getElementById("panel-" + t.getAttribute("data-tab"));
+        if (panel) panel.classList.toggle("is-active", on);
+      });
+      try { localStorage.setItem(KEY, name); } catch (e) {}
+      if (window.history && history.replaceState) {
+        history.replaceState(null, "", "#" + name);
+      }
+    }
+
+    tabs.forEach(function (t) {
+      t.addEventListener("click", function () { show(t.getAttribute("data-tab")); });
+    });
+    window.addEventListener("hashchange", function () {
+      show(location.hash.replace(/^#/, ""));
+    });
+
+    var initial = location.hash.replace(/^#/, "");
+    if (!initial) { try { initial = localStorage.getItem(KEY) || ""; } catch (e) {} }
+    show(initial);
+  })();
+</script>
 <script src="/static/theme-toggle.js" defer></script>
 </body>
 </html>
