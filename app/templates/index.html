@@ -20,8 +20,8 @@
 <style>
   /* page-specific only; canonical tokens live in tokens.css */
 
-  /* --- single pane: the page is a flex column that fills the viewport and
-         never scrolls; only a tab panel may scroll internally. ----------- */
+  /* --- one dense pane: everything visible at once on a desktop screen;
+         no tabs, no vertical centring, the page never scrolls. --------- */
   html, body { height: 100%; }
   body {
     height: 100dvh;
@@ -39,7 +39,7 @@
     align-items: baseline;
     justify-content: flex-start;
     gap: 1rem;
-    padding: .55rem 1.25rem .6rem;
+    padding: .5rem 1.25rem .55rem;
     border-bottom: 1px solid var(--border);
   }
   .page-header .theme-toggle {
@@ -69,55 +69,21 @@
   .verdict .level { color: var(--accent); font-weight: 600; }
   .verdict .note { color: var(--text); }
 
-  /* --------------------------------------------------------------- tabs */
-  .tabs {
-    flex: 0 0 auto;
-    display: flex;
-    gap: 1.5rem;
-    padding: .3rem 1.25rem 0;
-    border-bottom: 1px solid var(--border);
-  }
-  .tab {
-    font: inherit;
-    font-size: 13px;
-    letter-spacing: .04em;
-    color: var(--muted);
-    background: none;
-    border: 0;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -1px;
-    padding: .25rem 0 .3rem;
-    cursor: pointer;
-  }
-  .tab:hover { color: var(--accent); }
-  .tab[aria-selected="true"] {
-    color: var(--accent);
-    border-bottom-color: var(--accent);
-  }
-
-  /* ------------------------------------------------------------- panels */
-  .panels { flex: 1 1 auto; min-height: 0; }
-  .panel {
-    display: none;
-    height: 100%;
+  /* ---------------------------------------------------------- the grid */
+  .sheet {
+    flex: 1 1 auto;
+    min-height: 0;
     box-sizing: border-box;
-    overflow-y: auto;
-    padding: .55rem 1.25rem .8rem;
-  }
-  .panel.is-active { display: block; }
-  /* The `now` pane is short on a desktop screen — centre it so the page does
-     not read as top-heavy. `safe` keeps the top reachable if it ever grows. */
-  #panel-now.is-active {
-    display: flex;
-    flex-direction: column;
-    justify-content: safe center;
-  }
-  .cols {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 0 2.5rem;
-    align-items: start;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    align-content: start;
+    gap: .9rem 2rem;
+    padding: .6rem 1.25rem .7rem;
   }
+  .wide { grid-column: 1 / -1; }
+  .col { min-width: 0; }
+  section + section { margin-top: .9rem; }
   h2 {
     font-size: 11px;
     font-weight: 600;
@@ -126,8 +92,6 @@
     color: var(--muted);
     margin: 0 0 .3rem;
   }
-  .col + .col h2:first-child, .stack > * + * { margin-top: 0; }
-  .stack > section + section { margin-top: 1.1rem; }
 
   /* ------------------ table conventions carried over from zoleb server.py */
   .tbl { border-top: 1px solid var(--text); border-bottom: 1px solid var(--text); margin: 0; }
@@ -138,50 +102,69 @@
     font-size: 11px;
     letter-spacing: .08em;
     text-transform: uppercase;
-    padding: .35rem 0 .3rem;
+    padding: .3rem 0 .25rem;
     vertical-align: bottom;
     color: var(--text);
   }
-  tbody tr:first-child td { padding-top: .3rem; }
-  tbody tr:last-child td { padding-bottom: .35rem; border-bottom: none; }
+  tbody tr:first-child td { padding-top: .25rem; }
+  tbody tr:last-child td { padding-bottom: .3rem; border-bottom: none; }
   td {
-    padding: .2rem 0;
+    padding: .15rem 0;
     vertical-align: top;
     border-bottom: 1px solid var(--border);
     word-break: break-word;
     color: var(--text);
   }
-  td.k { font-weight: 500; padding-right: 1.5rem; }
+  td.k { font-weight: 500; padding-right: 1.5rem; white-space: nowrap; }
   td.v, td.n { font-variant-numeric: tabular-nums; padding-right: 1rem; }
   th.n { font-variant-numeric: tabular-nums; }
   td.s { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   tr.good td { color: var(--green); }
 
+  /* the 12-hour forecast is the tallest block: compact rows, ~24px each */
+  .fc table { font-size: 13px; }
+  .fc td, .fc th { padding: .15rem .5rem; }
+  .fc td:first-child, .fc th:first-child { padding-left: 0; }
+
   /* fixed layout keeps 12 forecast rows one line tall at any width */
-  col.c-hour { width: 4.6rem; }
-  col.c-temp { width: 3.6rem; }
-  col.c-wind { width: 6.4rem; }
-  col.c-rain { width: 3.6rem; }
+  col.c-hour { width: 5.5rem; }
+  col.c-temp { width: 4.5rem; }
+  col.c-wind { width: 8rem; }
+  col.c-rain { width: 4.5rem; }
   col.c-key  { width: 9rem; }
 
-  /* ---------------------------------------------------------- sparkline */
-  .spark {
-    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    font-size: 15px;
-    line-height: 2.1;
-    letter-spacing: .06em;
-    white-space: pre;
-    overflow-x: auto;
+  /* --------------------------------------------------------- wind bars */
+  .chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    width: 100%;
+    border-bottom: 1px solid var(--border);
   }
-  .spark .lbl { color: var(--muted); letter-spacing: 0; }
-  .spark-meta { color: var(--muted); font-size: 12px; margin: .25rem 0 0; }
+  .chart.wind { height: 90px; }
+  .chart.gust { height: 50px; margin-top: .5rem; }
+  .chart .slot { flex: 1 1 0; min-width: 0; display: flex; align-items: flex-end; height: 100%; }
+  .chart .bar { width: 100%; background: var(--text); }
+  .chart.gust .bar { background: var(--accent); }
+  .chart-meta {
+    color: var(--muted);
+    font-size: 11.5px;
+    margin: .2rem 0 0;
+  }
+  .chart-axis {
+    display: flex;
+    justify-content: space-between;
+    color: var(--muted);
+    font-size: 11px;
+    margin-top: .15rem;
+  }
 
   /* ------------------------------------------------------------- footer */
   footer {
     flex: 0 0 auto;
     color: var(--muted);
     border-top: 1px solid var(--border);
-    padding: .35rem 1.25rem .4rem;
+    padding: .3rem 1.25rem .35rem;
     text-align: center;
     font-size: 12px;
     line-height: 1.45;
@@ -189,7 +172,23 @@
   footer .stale { color: var(--red); }
   a { color: var(--accent); }
 
-  /* Phone: stack the two columns. Tables stay tables — they are narrow. */
+  /* Narrow: one column, in reading order, and the page may scroll. */
+  @media (max-width: 999px) {
+    body { height: auto; min-height: 100dvh; overflow: auto; }
+    .sheet {
+      display: flex;
+      flex-direction: column;
+      padding: .6rem 1rem .8rem;
+    }
+    /* reading order on a phone: current, wind + last 3h, forecast, 7 days */
+    .sheet > :nth-child(1) { order: 1; }
+    .sheet > :nth-child(2) { order: 2; }
+    .sheet > :nth-child(3) { order: 4; }  /* 7 days last */
+    .sheet > .wide         { order: 3; }
+    .sheet > * + * { margin-top: 1rem; }
+    .page-header, footer { padding-left: 1rem; padding-right: 1rem; }
+  }
+
   @media (max-width: 640px) {
     /* Give the verdict the full width; the toggle takes its own short row. */
     .page-header {
@@ -200,9 +199,6 @@
     }
     .page-header .theme-toggle { order: -1; align-self: flex-end; }
     .verdict { font-size: 1.15rem; }
-    .panel { padding-left: 1rem; padding-right: 1rem; }
-    .tabs, .page-header, .verdict, footer { padding-left: 1rem; padding-right: 1rem; }
-    .cols { grid-template-columns: minmax(0, 1fr); gap: .9rem 0; }
     .tbl table { font-size: 13px; }
     col.c-hour { width: 4.2rem; }
     col.c-temp { width: 3.2rem; }
@@ -223,73 +219,97 @@
           aria-label="Toggle color theme">theme</button>
 </header>
 
-<nav class="tabs" role="tablist" aria-label="views">
-  <button class="tab" type="button" role="tab" data-tab="now"
-          aria-controls="panel-now" aria-selected="true">now</button>
-  <button class="tab" type="button" role="tab" data-tab="forecast"
-          aria-controls="panel-forecast" aria-selected="false">next 12h</button>
-  <button class="tab" type="button" role="tab" data-tab="week"
-          aria-controls="panel-week" aria-selected="false">7 days</button>
-</nav>
+<main class="sheet">
 
-<main class="panels">
-
-  <section class="panel is-active" id="panel-now" role="tabpanel" aria-label="now">
-    <div class="cols">
-      <div class="col">
-        <h2>current</h2>
-        <div class="tbl">
-          <table>
-            <colgroup><col class="c-key"><col></colgroup>
-            <tbody>
-            {% for k, v in now_rows %}
-              <tr><td class="k">{{ k }}</td><td class="v">{{ v }}</td></tr>
-            {% else %}
-              <tr><td class="k">—</td><td class="v">no observations yet</td></tr>
-            {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="col stack">
-        <section>
-          <h2>wind, last 24h</h2>
-          <div class="spark"><span class="lbl">wind </span>{{ wind_spark }}
-<span class="lbl">gust </span>{{ gust_spark }}</div>
-          <p class="spark-meta">
-            sustained {{ wind_min }}–{{ wind_max }} mph · peak gust {{ gust_max }} mph
-            · one column per hour
-          </p>
-        </section>
-
-        <section>
-          <h2>last 3 hours</h2>
-          <div class="tbl">
-            <table>
-              <thead>
-                <tr><th>time</th><th class="n">wind mph</th><th class="n">gust mph</th></tr>
-              </thead>
-              <tbody>
-              {% for r in recent_rows %}
-                <tr>
-                  <td class="k">{{ r.time }}</td>
-                  <td class="n">{{ r.wind }}</td>
-                  <td class="n">{{ r.gust }}</td>
-                </tr>
-              {% else %}
-                <tr><td class="k">—</td><td class="n"></td><td class="n"></td></tr>
-              {% endfor %}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </div>
-    </div>
-  </section>
-
-  <section class="panel" id="panel-forecast" role="tabpanel" aria-label="next 12 hours">
+  <div class="col">
+    <h2>current</h2>
     <div class="tbl">
+      <table>
+        <colgroup><col class="c-key"><col></colgroup>
+        <tbody>
+        {% for k, v in now_rows %}
+          <tr><td class="k">{{ k }}</td><td class="v">{{ v }}</td></tr>
+        {% else %}
+          <tr><td class="k">—</td><td class="v">no observations yet</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="col">
+    <section>
+      <h2>wind, last 24h</h2>
+      <div class="chart wind" role="img"
+           aria-label="sustained wind by hour, last 24 hours">
+        {% for b in wind_bars %}
+        <span class="slot">{% if b.pct %}<span class="bar" style="height:{{ b.pct }}%"></span>{% endif %}</span>
+        {% endfor %}
+      </div>
+      <p class="chart-meta">sustained {{ wind_min }}–{{ wind_max }} mph</p>
+      <div class="chart gust" role="img"
+           aria-label="wind gusts by hour, last 24 hours">
+        {% for b in gust_bars %}
+        <span class="slot">{% if b.pct %}<span class="bar" style="height:{{ b.pct }}%"></span>{% endif %}</span>
+        {% endfor %}
+      </div>
+      <p class="chart-meta">peak gust {{ gust_max }} mph</p>
+      <div class="chart-axis"><span>{{ bars_start }}</span><span>{{ bars_end }}</span></div>
+    </section>
+
+    <section>
+      <h2>last 3 hours</h2>
+      <div class="tbl">
+        <table>
+          <thead>
+            <tr><th>time</th><th class="n">wind mph</th><th class="n">gust mph</th></tr>
+          </thead>
+          <tbody>
+          {% for r in recent_rows %}
+            <tr>
+              <td class="k">{{ r.time }}</td>
+              <td class="n">{{ r.wind }}</td>
+              <td class="n">{{ r.gust }}</td>
+            </tr>
+          {% else %}
+            <tr><td class="k">—</td><td class="n"></td><td class="n"></td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <div class="col">
+    <h2>7 days</h2>
+    <div class="tbl">
+      <table>
+        <thead>
+          <tr>
+            <th>date</th><th class="n">high</th><th class="n">low</th>
+            <th class="n">max wind</th><th class="n">max gust</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for d in days %}
+          <tr>
+            <td class="k">{{ d.date }}</td>
+            <td class="n">{{ d.hi }}</td>
+            <td class="n">{{ d.lo }}</td>
+            <td class="n">{{ d.wind }}</td>
+            <td class="n">{{ d.gust }}</td>
+          </tr>
+        {% else %}
+          <tr><td class="k">—</td><td class="n"></td><td class="n"></td><td class="n"></td><td class="n">no history yet</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="wide">
+    <h2>next 12 hours</h2>
+    <div class="tbl fc">
       <table>
         <colgroup>
           <col class="c-hour"><col class="c-temp"><col class="c-wind">
@@ -315,33 +335,7 @@
         </tbody>
       </table>
     </div>
-  </section>
-
-  <section class="panel" id="panel-week" role="tabpanel" aria-label="last 7 days">
-    <div class="tbl">
-      <table>
-        <thead>
-          <tr>
-            <th>date</th><th class="n">high</th><th class="n">low</th>
-            <th class="n">max wind</th><th class="n">max gust</th>
-          </tr>
-        </thead>
-        <tbody>
-        {% for d in days %}
-          <tr>
-            <td class="k">{{ d.date }}</td>
-            <td class="n">{{ d.hi }}</td>
-            <td class="n">{{ d.lo }}</td>
-            <td class="n">{{ d.wind }}</td>
-            <td class="n">{{ d.gust }}</td>
-          </tr>
-        {% else %}
-          <tr><td class="k">—</td><td class="n"></td><td class="n"></td><td class="n"></td><td class="n">no history yet</td></tr>
-        {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </section>
+  </div>
 
 </main>
 
@@ -354,40 +348,6 @@
   station polled every 10 min
 </footer>
 
-<script>
-  // Tabs: remembered in localStorage and mirrored in the URL hash, so the
-  // 5-minute meta refresh comes back to the tab you were looking at.
-  (function () {
-    var KEY = "lake-mood-tab";
-    var tabs = Array.prototype.slice.call(document.querySelectorAll(".tab"));
-    var names = tabs.map(function (t) { return t.getAttribute("data-tab"); });
-
-    function show(name) {
-      if (names.indexOf(name) < 0) name = names[0];
-      tabs.forEach(function (t) {
-        var on = t.getAttribute("data-tab") === name;
-        t.setAttribute("aria-selected", on ? "true" : "false");
-        var panel = document.getElementById("panel-" + t.getAttribute("data-tab"));
-        if (panel) panel.classList.toggle("is-active", on);
-      });
-      try { localStorage.setItem(KEY, name); } catch (e) {}
-      if (window.history && history.replaceState) {
-        history.replaceState(null, "", "#" + name);
-      }
-    }
-
-    tabs.forEach(function (t) {
-      t.addEventListener("click", function () { show(t.getAttribute("data-tab")); });
-    });
-    window.addEventListener("hashchange", function () {
-      show(location.hash.replace(/^#/, ""));
-    });
-
-    var initial = location.hash.replace(/^#/, "");
-    if (!initial) { try { initial = localStorage.getItem(KEY) || ""; } catch (e) {} }
-    show(initial);
-  })();
-</script>
 <script src="/static/theme-toggle.js" defer></script>
 </body>
 </html>

@@ -20,7 +20,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from . import db, nws
 from .poller import Poller
-from .verdict import kayak_verdict, sparkline, wind_dir_name
+from .verdict import kayak_verdict, wind_dir_name
 
 logging.basicConfig(
     level=os.environ.get("LOG_LEVEL", "INFO").upper(),
@@ -220,6 +220,21 @@ def hourly_buckets(rows, hours=24):
     return starts, wind, gust
 
 
+def bars(values, scale):
+    """Turn hourly values into CSS bar heights: {"pct": 0-100 or None}.
+
+    Height is a share of the shared wind/gust `scale` so both charts read on
+    one axis; a missing hour keeps its slot but has no bar.
+    """
+    out = []
+    for v in values:
+        if v is None or not scale:
+            out.append({"pct": None})
+        else:
+            out.append({"pct": max(2, min(100, round(v / scale * 100)))})
+    return out
+
+
 def daily_summary(rows, tz, days=HISTORY_DAYS):
     """Group observations by local calendar date -> high/low/max wind/max gust."""
     buckets: dict = {}
@@ -292,7 +307,7 @@ def index():
         at=fmt_clock((v_obs or {}).get("ts"), tz) if v_fallback else None,
     )
 
-    _, wind, gust = hourly_buckets(recent, 24)
+    starts, wind, gust = hourly_buckets(recent, 24)
     scale = max([v for v in wind + gust if v is not None] or [0]) or None
     present_w = [v for v in wind if v is not None]
     present_g = [v for v in gust if v is not None]
@@ -310,8 +325,10 @@ def index():
         stale_minutes=STALE_MINUTES,
         now_rows=now_row(obs, tz),
         recent_rows=recent_hours(recent, tz),
-        wind_spark=sparkline(wind, scale),
-        gust_spark=sparkline(gust, scale),
+        wind_bars=bars(wind, scale),
+        gust_bars=bars(gust, scale),
+        bars_start=(fmt_hour(starts[0].isoformat(), tz) + " yesterday") if starts else "",
+        bars_end=fmt_hour(starts[-1].isoformat(), tz) if starts else "",
         wind_min=fmt_num(min(present_w), 0) if present_w else "—",
         wind_max=fmt_num(max(present_w), 0) if present_w else "—",
         gust_max=fmt_num(max(present_g), 0) if present_g else "—",
