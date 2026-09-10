@@ -96,12 +96,12 @@ def test_verdict_gust_below_sustained_is_ignored():
 def test_verdict_note_flat_example():
     v = kayak_verdict(6, None, 135)
     assert v["label"] == "flat"
-    assert v["note"] == "SE 6 mph, no gusts. Go."
+    assert v["note"] == "SE 6 mph, no gusts."
 
 
 def test_verdict_note_chop_example():
     v = kayak_verdict(14, 21, 180)
-    assert v["note"] == "S 14 gusting 21. Sheltered coves only."
+    assert v["note"] == "S 14 gusting 21."
 
 
 def test_verdict_without_observation():
@@ -135,7 +135,7 @@ def test_storm_note_appended_with_hour_label():
     ])
     assert v["level"] == "flat"
     assert v["note"] == (
-        "SE 6 mph, no gusts. Go. "
+        "SE 6 mph, no gusts. "
         "Thunderstorm chance 43% by 7 pm; outflow gusts can hit 30 mph fast."
     )
 
@@ -146,9 +146,9 @@ def test_storm_note_wind_only():
 
 
 def test_calm_wording_still_states_the_number():
-    assert kayak_verdict(0, None, 0)["note"] == "calm (0 mph), no gusts. Go."
-    assert kayak_verdict(0.4, None, 90)["note"] == "calm (0 mph), no gusts. Go."
+    assert kayak_verdict(0, None, 0)["note"] == "calm (0 mph), no gusts."
+    assert kayak_verdict(0.4, None, 90)["note"] == "calm (0 mph), no gusts."
 
 
 def test_calm_with_a_gust_keeps_both_numbers():
-    assert kayak_verdict(0, 13, 90)["note"] == "calm (0) gusting 13. Easy paddle."
+    assert kayak_verdict(0, 13, 90)["note"] == "calm (0) gusting 13."

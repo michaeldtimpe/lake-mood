@@ -85,13 +85,14 @@ def sparkline(values, max_value=None):
 
 # -------------------------------------------------------------------- verdict
 
-# (level, label, max sustained, max gust, advice)
+# (level, label, max sustained, max gust). The label is the judgment — the
+# banner carries no advice phrase on top of it.
 _LEVELS = (
-    ("flat", "flat", 8.0, 12.0, "Go."),
-    ("ripples", "ripples", 12.0, 16.0, "Easy paddle."),
-    ("chop", "chop", 16.0, 22.0, "Sheltered coves only."),
+    ("flat", "flat", 8.0, 12.0),
+    ("ripples", "ripples", 12.0, 16.0),
+    ("chop", "chop", 16.0, 22.0),
 )
-_WHITECAPS = ("whitecaps", "whitecaps", "Stay off the water.")
+_WHITECAPS = ("whitecaps", "whitecaps")
 
 STORM_POP = 40.0
 STORM_WIND_MPH = 20.0
@@ -140,9 +141,10 @@ def kayak_verdict(sustained_mph, gust_mph=None, wind_dir=None, forecast_hours=No
     ``wind_dir`` may be degrees or an already-named compass point.
     ``forecast_hours`` is the next ~3 hourly periods (see ``storm_flag``).
     Returns ``{"level", "label", "note"}``; the page renders the label in the
-    accent color followed by the note, e.g.
-    ``flat — SE 6 mph, no gusts. Go.`` The note always carries a number, so a
-    dead-calm lake reads ``calm (0 mph), no gusts.`` rather than just "calm".
+    accent color followed by the note, e.g. ``flat — SE 6 mph, no gusts.``
+    The label is the judgment, so the note adds no advice phrase; it always
+    carries a number, so a dead-calm lake reads ``calm (0 mph), no gusts.``
+    rather than just "calm". A storm sentence is appended when one applies.
     """
     if sustained_mph is None:
         return {
@@ -154,10 +156,10 @@ def kayak_verdict(sustained_mph, gust_mph=None, wind_dir=None, forecast_hours=No
     sustained = float(sustained_mph)
     gust = sustained if gust_mph is None else max(float(gust_mph), sustained)
 
-    level, label, advice = _WHITECAPS
-    for lvl, lbl, max_sus, max_gust, adv in _LEVELS:
+    level, label = _WHITECAPS
+    for lvl, lbl, max_sus, max_gust in _LEVELS:
         if sustained < max_sus and gust < max_gust:
-            level, label, advice = lvl, lbl, adv
+            level, label = lvl, lbl
             break
 
     if isinstance(wind_dir, str):
@@ -178,7 +180,7 @@ def kayak_verdict(sustained_mph, gust_mph=None, wind_dir=None, forecast_hours=No
         wind_txt = "calm (0)" if calm else f"{name} {sustained:.0f}".strip()
         gust_txt = f" gusting {gust:.0f}"
 
-    note = f"{wind_txt}{gust_txt}. {advice}"
+    note = f"{wind_txt}{gust_txt}."
 
     if storm_flag(forecast_hours):
         extra = _storm_note(forecast_hours)
