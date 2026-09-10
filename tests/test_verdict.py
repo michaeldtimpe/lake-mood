@@ -145,5 +145,10 @@ def test_storm_note_wind_only():
     assert "Wind building to 22 mph by 7 pm" in v["note"]
 
 
-def test_calm_wording():
-    assert kayak_verdict(0, None, 0)["note"].startswith("calm")
+def test_calm_wording_still_states_the_number():
+    assert kayak_verdict(0, None, 0)["note"] == "calm (0 mph), no gusts. Go."
+    assert kayak_verdict(0.4, None, 90)["note"] == "calm (0 mph), no gusts. Go."
+
+
+def test_calm_with_a_gust_keeps_both_numbers():
+    assert kayak_verdict(0, 13, 90)["note"] == "calm (0) gusting 13. Easy paddle."

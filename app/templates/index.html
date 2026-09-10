@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="refresh" content="300">
-<title>lake mood</title>
+<title>🏞️</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.95em' font-size='92'%3E🏞️%3C/text%3E%3C/svg%3E">
 <script>
   (function () {
     try {
@@ -31,46 +32,39 @@
     line-height: 1.5;
   }
 
-  /* ------------------------------------------------------------ top bar */
+  /* ------------- top bar: the verdict and the theme toggle share one row */
   .page-header {
     flex: 0 0 auto;
     display: flex;
     align-items: baseline;
     justify-content: flex-start;
-    gap: .75rem;
-    padding: .45rem 1.25rem;
+    gap: 1rem;
+    padding: .55rem 1.25rem .6rem;
     border-bottom: 1px solid var(--border);
   }
-  h1 {
-    font-size: 1.05rem;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-    margin: 0;
-    flex: 0 0 auto;
-  }
-  .sub {
-    color: var(--muted);
-    font-size: 12.5px;
-    margin: 0;
-    flex: 1 1 auto;
-    min-width: 0;
-  }
-  .sub .stale { color: var(--red); }
   .page-header .theme-toggle {
     flex: 0 0 auto;
     margin-left: auto;
     font-size: 12.5px;
     padding: .1rem .5rem;
   }
+  .sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    margin: -1px; padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
 
-  /* ------------------------------------------------------ verdict strip */
+  /* The verdict is the point of the page: biggest text, always visible. */
   .verdict {
-    flex: 0 0 auto;
+    flex: 1 1 auto;
+    min-width: 0;
     font-size: 1.3rem;
     line-height: 1.35;
     margin: 0;
-    padding: .6rem 1.25rem .65rem;
-    border-bottom: 1px solid var(--border);
   }
   .verdict .level { color: var(--accent); font-weight: 600; }
   .verdict .note { color: var(--text); }
@@ -111,6 +105,13 @@
     padding: .55rem 1.25rem .8rem;
   }
   .panel.is-active { display: block; }
+  /* The `now` pane is short on a desktop screen — centre it so the page does
+     not read as top-heavy. `safe` keeps the top reachable if it ever grows. */
+  #panel-now.is-active {
+    display: flex;
+    flex-direction: column;
+    justify-content: safe center;
+  }
   .cols {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -126,7 +127,7 @@
     margin: 0 0 .3rem;
   }
   .col + .col h2:first-child, .stack > * + * { margin-top: 0; }
-  .stack > section + section { margin-top: .9rem; }
+  .stack > section + section { margin-top: 1.1rem; }
 
   /* ------------------ table conventions carried over from zoleb server.py */
   .tbl { border-top: 1px solid var(--text); border-bottom: 1px solid var(--text); margin: 0; }
@@ -167,7 +168,7 @@
   .spark {
     font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     font-size: 15px;
-    line-height: 1.8;
+    line-height: 2.1;
     letter-spacing: .06em;
     white-space: pre;
     overflow-x: auto;
@@ -183,14 +184,22 @@
     padding: .35rem 1.25rem .4rem;
     text-align: center;
     font-size: 12px;
+    line-height: 1.45;
   }
+  footer .stale { color: var(--red); }
   a { color: var(--accent); }
 
   /* Phone: stack the two columns. Tables stay tables — they are narrow. */
   @media (max-width: 640px) {
-    .page-header { flex-wrap: wrap; }
-    .sub { order: 3; flex: 1 0 100%; }
-    .verdict { font-size: 1.2rem; }
+    /* Give the verdict the full width; the toggle takes its own short row. */
+    .page-header {
+      flex-direction: column;
+      align-items: stretch;
+      gap: .25rem;
+      padding-top: .35rem;
+    }
+    .page-header .theme-toggle { order: -1; align-self: flex-end; }
+    .verdict { font-size: 1.15rem; }
     .panel { padding-left: 1rem; padding-right: 1rem; }
     .tabs, .page-header, .verdict, footer { padding-left: 1rem; padding-right: 1rem; }
     .cols { grid-template-columns: minmax(0, 1fr); gap: .9rem 0; }
@@ -205,21 +214,14 @@
 <body>
 
 <header class="page-header">
-  <h1>lake mood</h1>
-  <p class="sub">
-    mountain creek lake · {{ station }} · updated {{ updated }}
-    {% if stale %}
-    <span class="stale">· stale, no observation in {{ stale_minutes }}+ min</span>
-    {% endif %}
+  <h1 class="sr-only">lake mood</h1>
+  <p class="verdict">
+    <span class="level">{{ verdict.label }}</span>
+    <span class="note">— {{ verdict.note }}</span>
   </p>
   <button id="theme-toggle" class="theme-toggle" type="button"
           aria-label="Toggle color theme">theme</button>
 </header>
-
-<p class="verdict">
-  <span class="level">{{ verdict.label }}</span>
-  <span class="note">— {{ verdict.note }}</span>
-</p>
 
 <nav class="tabs" role="tablist" aria-label="views">
   <button class="tab" type="button" role="tab" data-tab="now"
@@ -266,7 +268,7 @@
           <div class="tbl">
             <table>
               <thead>
-                <tr><th>time</th><th class="n">wind</th><th class="n">gust</th></tr>
+                <tr><th>time</th><th class="n">wind mph</th><th class="n">gust mph</th></tr>
               </thead>
               <tbody>
               {% for r in recent_rows %}
@@ -344,7 +346,12 @@
 </main>
 
 <footer>
-  data: National Weather Service, station {{ station }} · refreshes every 10 min
+  mountain creek lake · {{ station }} · updated {{ updated }}
+  {% if stale %}
+  <span class="stale">· stale, no observation in {{ stale_minutes }}+ min</span>
+  {% endif %}
+  · data: National Weather Service · page refreshes every 5 min,
+  station polled every 10 min
 </footer>
 
 <script>

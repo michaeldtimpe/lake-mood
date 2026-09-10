@@ -113,12 +113,18 @@ def now_row(obs, tz):
         return []
     wind = obs.get("wind_mph")
     d = wind_dir_name(obs.get("wind_dir"))
-    wind_txt = "calm" if (wind is not None and wind < 1) else f"{d} {fmt_num(wind)} mph".strip()
+    # Always show a speed — "calm" on its own hides the number.
+    if wind is None:
+        wind_txt = "—"
+    elif wind < 1:
+        wind_txt = "calm · 0 mph"
+    else:
+        wind_txt = f"{d} {fmt_num(wind)} mph".strip()
     return [
         ("temp", fmt_num(obs.get("temp_f"), 0, "°F")),
         ("dew point", fmt_num(obs.get("dewpt_f"), 0, "°F")),
         ("humidity", fmt_num(obs.get("rh"), 0, "%")),
-        ("wind", wind_txt if wind is not None else "—"),
+        ("wind", wind_txt),
         ("gust", fmt_num(obs.get("gust_mph"), 0, " mph") if obs.get("gust_mph") else "none"),
         ("pressure", fmt_num(obs.get("pressure_mb"), 1, " mb")),
         ("visibility", fmt_num(obs.get("vis_mi"), 1, " mi")),
@@ -131,7 +137,9 @@ def recent_hours(rows, tz, hours=3):
     """The last few clock hours as (time, wind, gust), newest first.
 
     `rows` is the ascending observation list; stations that report more than
-    once an hour collapse to their newest reading for that hour.
+    once an hour collapse to their newest reading for that hour. Wind carries
+    its direction and is always a number ("SE 5", "calm 0"); the table header
+    supplies the mph unit.
     """
     seen: dict = {}
     for r in rows:
@@ -144,10 +152,17 @@ def recent_hours(rows, tz, hours=3):
     out = []
     for key in sorted(seen, reverse=True)[:hours]:
         _, r = seen[key]
+        wind = r.get("wind_mph")
         gust = r.get("gust_mph")
+        if wind is None:
+            wind_txt = "—"
+        elif wind < 1:
+            wind_txt = "calm 0"
+        else:
+            wind_txt = f"{wind_dir_name(r.get('wind_dir'))} {wind:.0f}".strip()
         out.append({
             "time": fmt_clock(r.get("ts"), tz),
-            "wind": fmt_num(r.get("wind_mph"), 0),
+            "wind": wind_txt,
             "gust": fmt_num(gust, 0) if gust else "—",
         })
     return out

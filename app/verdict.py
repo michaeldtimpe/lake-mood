@@ -141,7 +141,8 @@ def kayak_verdict(sustained_mph, gust_mph=None, wind_dir=None, forecast_hours=No
     ``forecast_hours`` is the next ~3 hourly periods (see ``storm_flag``).
     Returns ``{"level", "label", "note"}``; the page renders the label in the
     accent color followed by the note, e.g.
-    ``flat — SE 6 mph, no gusts. Go.``
+    ``flat — SE 6 mph, no gusts. Go.`` The note always carries a number, so a
+    dead-calm lake reads ``calm (0 mph), no gusts.`` rather than just "calm".
     """
     if sustained_mph is None:
         return {
@@ -164,15 +165,17 @@ def kayak_verdict(sustained_mph, gust_mph=None, wind_dir=None, forecast_hours=No
     else:
         name = wind_dir_name(wind_dir)
 
-    if sustained < 1:
-        wind_txt = "calm"
+    # Always state a speed, so "calm" never hides the actual number.
+    calm = sustained < 1
+    if calm:
+        wind_txt = "calm (0 mph)"
     else:
         wind_txt = f"{name} {sustained:.0f} mph".strip()
 
     if gust_mph is None or gust - sustained < 2:
         gust_txt = ", no gusts"
     else:
-        wind_txt = f"{name} {sustained:.0f}".strip()
+        wind_txt = "calm (0)" if calm else f"{name} {sustained:.0f}".strip()
         gust_txt = f" gusting {gust:.0f}"
 
     note = f"{wind_txt}{gust_txt}. {advice}"
