@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="refresh" content="300">
+<title>lake mood</title>
+<script>
+  (function () {
+    try {
+      var t = localStorage.getItem("zoleb-theme") || "dark";
+      document.documentElement.setAttribute("data-theme", t);
+    } catch (e) {
+      document.documentElement.setAttribute("data-theme", "dark");
+    }
+  })();
+</script>
+<link rel="stylesheet" href="/static/tokens.css">
+<style>
+  /* page-specific only; canonical tokens live in tokens.css */
+  body {
+    font-size: 15.4px;
+    line-height: 1.55;
+  }
+  .wrap {
+    max-width: 720px;
+    margin: 0 auto 4rem;
+    padding: 0 1.25rem;
+  }
+  .page-header { max-width: 720px; margin: 0 auto; padding: 16px 1.25rem; }
+  h1 {
+    font-size: 1.6rem;
+    font-weight: 600;
+    margin: .25rem 0 .1rem;
+    letter-spacing: -0.01em;
+  }
+  h2 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--accent);
+    margin: 1.9rem 0 .35rem;
+  }
+  .sub { color: var(--muted); font-size: 13px; margin: 0 0 1.4rem; }
+  .sub .stale { color: var(--red); }
+  .verdict {
+    font-size: 1.25rem;
+    line-height: 1.45;
+    margin: 0 0 .5rem;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 1rem 0;
+  }
+  .verdict .level { color: var(--accent); font-weight: 600; }
+  .verdict .note { color: var(--text); }
+
+  /* table conventions carried over from zoleb server.py */
+  .tbl { border-top: 1px solid var(--text); border-bottom: 1px solid var(--text); margin: 0; }
+  .tbl table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  thead th {
+    text-align: left;
+    font-weight: 600;
+    font-size: inherit;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: .8rem 0 .55rem;
+    vertical-align: bottom;
+    color: var(--text);
+  }
+  tbody tr:first-child td { padding-top: .6rem; }
+  tbody tr:last-child td { padding-bottom: .8rem; border-bottom: none; }
+  td {
+    padding: .4rem 0;
+    vertical-align: top;
+    border-bottom: 1px solid var(--border);
+    word-break: break-word;
+    color: var(--text);
+  }
+  td.k { font-weight: 500; padding-right: 2rem; }
+  td.v, td.n { font-variant-numeric: tabular-nums; padding-right: 1.5rem; }
+  th.n { font-variant-numeric: tabular-nums; }
+  tr.good td { color: var(--green); }
+  .spark {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 15px;
+    line-height: 1.9;
+    letter-spacing: .06em;
+    white-space: pre;
+    overflow-x: auto;
+  }
+  .spark .lbl { color: var(--muted); letter-spacing: 0; }
+  .spark-meta { color: var(--muted); font-size: 12.5px; margin-top: .35rem; }
+  footer {
+    margin-top: 2.75rem;
+    color: var(--accent);
+    border-top: 1px solid var(--border);
+    padding-top: 1.1rem;
+    text-align: center;
+    font-size: 13px;
+  }
+  a { color: var(--accent); }
+  @media (max-width: 640px) {
+    thead { display: none; }
+    table, tbody, tr, td { display: block; width: 100% !important; }
+    tbody tr { border-bottom: 1px solid var(--border); padding: .6rem 0; }
+    tbody tr:last-child { border-bottom: none; }
+    td { border: none; padding: .1rem 0; }
+    td.k, td.v, td.n { padding-right: 0; }
+  }
+</style>
+</head>
+<body>
+
+<header class="page-header">
+  <button id="theme-toggle" class="theme-toggle" type="button"
+          aria-label="Toggle color theme">theme</button>
+</header>
+
+<div class="wrap">
+
+  <h1>lake mood</h1>
+  <p class="sub">
+    mountain creek lake · {{ station }} · updated {{ updated }}
+    {% if stale %}
+    <span class="stale">· stale, no observation in {{ stale_minutes }}+ min</span>
+    {% endif %}
+  </p>
+
+  <p class="verdict">
+    <span class="level">{{ verdict.label }}</span>
+    <span class="note">— {{ verdict.note }}</span>
+  </p>
+
+  <h2>now</h2>
+  <div class="tbl">
+    <table>
+      <tbody>
+      {% for k, v in now_rows %}
+        <tr><td class="k">{{ k }}</td><td class="v">{{ v }}</td></tr>
+      {% else %}
+        <tr><td class="k">—</td><td class="v">no observations yet</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <h2>wind, last 24h</h2>
+  <div class="spark"><span class="lbl">wind </span>{{ wind_spark }}
+<span class="lbl">gust </span>{{ gust_spark }}</div>
+  <p class="spark-meta">
+    sustained {{ wind_min }}–{{ wind_max }} mph · peak gust {{ gust_max }} mph · one column per hour
+  </p>
+
+  <h2>next 12 hours</h2>
+  <div class="tbl">
+    <table>
+      <thead>
+        <tr>
+          <th>hour</th><th class="n">temp</th><th>wind</th><th class="n">rain</th><th>sky</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for f in forecast %}
+        <tr{% if f.good %} class="good"{% endif %}>
+          <td class="k">{{ f.hour }}</td>
+          <td class="n">{{ f.temp }}</td>
+          <td class="n">{{ f.wind }}</td>
+          <td class="n">{{ f.rain }}</td>
+          <td>{{ f.short }}</td>
+        </tr>
+      {% else %}
+        <tr><td class="k">—</td><td class="n"></td><td class="n"></td><td class="n"></td><td>no forecast yet</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <h2>last 7 days</h2>
+  <div class="tbl">
+    <table>
+      <thead>
+        <tr>
+          <th>date</th><th class="n">high</th><th class="n">low</th>
+          <th class="n">max wind</th><th class="n">max gust</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for d in days %}
+        <tr>
+          <td class="k">{{ d.date }}</td>
+          <td class="n">{{ d.hi }}</td>
+          <td class="n">{{ d.lo }}</td>
+          <td class="n">{{ d.wind }}</td>
+          <td class="n">{{ d.gust }}</td>
+        </tr>
+      {% else %}
+        <tr><td class="k">—</td><td class="n"></td><td class="n"></td><td class="n"></td><td class="n">no history yet</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <footer>
+    data: National Weather Service, station {{ station }} · refreshes every 10 min
+  </footer>
+
+</div>
+
+<script src="/static/theme-toggle.js" defer></script>
+</body>
+</html>
