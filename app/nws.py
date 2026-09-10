@@ -22,7 +22,7 @@ BASE = "https://api.weather.gov"
 STATION = "KGPM"
 LAT, LON = 32.722, -96.951
 # Used only if /points fails: Fort Worth office, the grid cell over the lake.
-FALLBACK_HOURLY = f"{BASE}/gridpoints/FWD/84,103/forecast/hourly"
+FALLBACK_HOURLY = f"{BASE}/gridpoints/FWD/83,102/forecast/hourly"
 
 DEFAULT_UA = "(lake-mood, set NWS_UA in .env)"
 
