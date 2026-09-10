@@ -14,6 +14,8 @@ current conditions, a 24-hour wind sparkline, the next 12 forecast hours with
 candidate paddle windows highlighted, and a 7-day summary. Server-rendered,
 no client JavaScript beyond the theme toggle, auto-refreshes every 5 minutes.
 
+On the home LAN it lives at http://lakemood (see [DEPLOY.md](DEPLOY.md)).
+
 ## Endpoints
 
 | Path | Returns |

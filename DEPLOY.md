@@ -77,3 +77,47 @@ curl -s localhost:9011/health
 `/health` returns 503 if the database has no observations yet or the observation
 poller has failed five times in a row; the container HEALTHCHECK uses the same
 endpoint.
+
+## Short name (http://lakemood)
+
+The dashboard is reachable at `http://lakemood` on the home LAN via two pieces of configuration:
+
+### DNS
+
+The ASUS router (Asuswrt-Merlin, 192.168.1.1) resolves `lakemood` and `lakemood.lan`
+to kappa (192.168.1.248). This is configured in `/jffs/configs/dnsmasq.conf.add`:
+
+```
+address=/lakemood/lakemood.lan/192.168.1.248
+```
+
+Applied with `service restart_dnsmasq` on the router. A backup of the previous file
+is at `/jffs/configs/dnsmasq.conf.add.bak-20260910`. Note that `.local` was avoided
+on purpose — Apple devices resolve `*.local` only via mDNS, never via the router.
+
+### Port 80
+
+DSM's nginx on kappa proxies these hostnames to the container via a manual vhost at
+`/usr/local/etc/nginx/sites-enabled/lakemood.conf`:
+
+```
+server {
+    listen 80;
+    listen [::]:80;
+    server_name lakemood lakemood.lan;
+
+    location / {
+        proxy_pass http://127.0.0.1:9011;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+Reload with `nginx -t && synosystemctl reload nginx` as root.
+
+**Warning:** A DSM update can regenerate the nginx config and drop this file. If
+`http://lakemood` stops working but `http://lakemood:9011` still does, recreate
+the vhost file.
