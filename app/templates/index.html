@@ -18,36 +18,30 @@
 </script>
 <link rel="stylesheet" href="/static/tokens.css">
 <style>
-  /* page-specific only; canonical tokens live in tokens.css */
+  /* page-specific only; every colour below is a tokens.css variable or a
+     color-mix() of one — no page-local hues. */
 
-  /* --- one dense pane: everything visible at once on a desktop screen;
-         no tabs, no vertical centring, the page never scrolls. --------- */
-  html, body { height: 100%; }
+  * { box-sizing: border-box; }
   body {
-    height: 100dvh;
+    font-size: 14px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  b, i, em, strong, td, .num, .chip, .big { font-variant-numeric: tabular-nums; }
+
+  .wrap {
     display: flex;
     flex-direction: column;
-    overflow: hidden;
-    font-size: 14.5px;
-    line-height: 1.5;
+    gap: 12px;
+    padding: 14px;
+    min-height: 100vh;
+  }
+  /* Desktop: one screenful, never a scrollbar. */
+  @media (min-width: 1100px) {
+    body { overflow: hidden; }
+    .wrap { height: 100vh; min-height: 0; }
   }
 
-  /* ------------- top bar: the verdict and the theme toggle share one row */
-  .page-header {
-    flex: 0 0 auto;
-    display: flex;
-    align-items: baseline;
-    justify-content: flex-start;
-    gap: 1rem;
-    padding: .5rem 1.25rem .55rem;
-    border-bottom: 1px solid var(--border);
-  }
-  .page-header .theme-toggle {
-    flex: 0 0 auto;
-    margin-left: auto;
-    font-size: 12.5px;
-    padding: .1rem .5rem;
-  }
   .sr-only {
     position: absolute;
     width: 1px; height: 1px;
@@ -58,295 +52,451 @@
     border: 0;
   }
 
-  /* The verdict is the point of the page: biggest text, always visible. */
-  .verdict {
-    flex: 1 1 auto;
-    min-width: 0;
-    font-size: 1.3rem;
-    line-height: 1.35;
-    margin: 0;
+  /* ------------------------------------------------------- alert strip */
+  /* Stays in document flow at the top of <body>: it is the page header and
+     carries the theme toggle, so nothing is fixed or floating. */
+  .alert {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    min-height: 56px;
+    padding: 8px 16px;
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    border-radius: 8px;
+    background: var(--accent-soft);
+    flex: 0 0 auto;
   }
-  .verdict .level { color: var(--accent); font-weight: 600; }
-  .verdict .note { color: var(--text); }
+  /* Whitecaps or a storm flag: the edge goes red, the level word does not. */
+  .alert.warn { border-left-color: var(--red); }
+  .level {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: -.01em;
+    line-height: 1.1;
+  }
+  .note { font-size: 15px; min-width: 0; }
+  .note .storm { color: var(--red); }
+  .alert .right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  .upd { color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .upd .stale { color: var(--red); }
+  .alert .theme-toggle {
+    border-radius: 999px;
+    font-size: 12px;
+    padding: 4px 12px;
+    color: var(--accent);
+  }
 
-  /* ---------------------------------------------------------- the grid */
-  .sheet {
+  /* -------------------------------------------------------------- grid */
+  .grid {
+    display: grid;
+    grid-template-columns: 25fr 45fr 30fr;
+    gap: 14px;
     flex: 1 1 auto;
     min-height: 0;
-    box-sizing: border-box;
+  }
+  .col { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    min-height: 0;
+  }
+  .card.grow { flex: 1 1 auto; display: flex; flex-direction: column; overflow: hidden; }
+  .card.fixed { flex: 0 0 auto; }
+  .card.vc { justify-content: center; }
+  .lbl {
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: .08em;
+    color: var(--muted);
+    font-weight: 600;
+    margin: 0 0 8px;
+  }
+
+  /* -------------------------------------------------- left: hero + badges */
+  .temp { display: flex; align-items: baseline; gap: 4px; }
+  .temp .big { font-size: 64px; font-weight: 700; color: var(--text); line-height: 1; }
+  .temp .u { font-size: 20px; color: var(--muted); font-weight: 600; }
+  .sub { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  .sub b { color: var(--text); font-weight: 600; }
+  .winds { display: flex; gap: 20px; }
+  .winds .big { font-size: 32px; font-weight: 700; line-height: 1.1; color: var(--text); }
+  .winds .g .big { color: var(--accent); }
+  .winds .u2 {
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+  }
+  .badges { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; flex: 0 0 auto; }
+  .badge {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 9px;
+  }
+  .badge .k {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--muted);
+  }
+  .badge .v { font-size: 16px; font-weight: 600; color: var(--text); }
+
+  .l3 { display: flex; flex-direction: column; gap: 2px; flex: 1 1 auto; }
+  .l3row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr);
-    align-content: start;
-    gap: .9rem 2rem;
-    padding: .6rem 1.25rem .7rem;
+    grid-template-columns: 1fr auto auto;
+    gap: 10px;
+    padding: 4px 0;
+    border-top: 1px solid var(--border);
+    font-size: 13px;
+    align-items: baseline;
   }
-  .wide { grid-column: 1 / -1; }
-  .col { min-width: 0; }
-  section + section { margin-top: .9rem; }
-  h2 {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: .08em;
-    text-transform: uppercase;
+  .l3row:first-child { border-top: 0; }
+  .l3row > span:first-child { color: var(--muted); }
+  .l3w { width: 52px; text-align: right; font-weight: 600; color: var(--text); }
+  .l3g { width: 40px; text-align: right; color: var(--accent); font-weight: 600; }
+  .l3head span, .l3head .l3w, .l3head .l3g {
     color: var(--muted);
-    margin: 0 0 .3rem;
-  }
-
-  /* ------------------ table conventions carried over from zoleb server.py */
-  .tbl { border-top: 1px solid var(--text); border-bottom: 1px solid var(--text); margin: 0; }
-  .tbl table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 13.5px; }
-  thead th {
-    text-align: left;
-    font-weight: 600;
     font-size: 11px;
-    letter-spacing: .08em;
+    font-weight: 600;
     text-transform: uppercase;
-    padding: .3rem 0 .25rem;
-    vertical-align: bottom;
-    color: var(--text);
+    letter-spacing: .06em;
   }
-  tbody tr:first-child td { padding-top: .25rem; }
-  tbody tr:last-child td { padding-bottom: .3rem; border-bottom: none; }
-  td {
-    padding: .15rem 0;
-    vertical-align: top;
-    border-bottom: 1px solid var(--border);
-    word-break: break-word;
-    color: var(--text);
-  }
-  td.k { font-weight: 500; padding-right: 1.5rem; white-space: nowrap; }
-  td.v, td.n { font-variant-numeric: tabular-nums; padding-right: 1rem; }
-  th.n { font-variant-numeric: tabular-nums; }
-  td.s { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  tr.good td { color: var(--green); }
 
-  /* the 12-hour forecast is the tallest block: compact rows, ~24px each */
-  .fc table { font-size: 13px; }
-  .fc td, .fc th { padding: .15rem .5rem; }
-  .fc td:first-child, .fc th:first-child { padding-left: 0; }
-
-  /* fixed layout keeps 12 forecast rows one line tall at any width */
-  col.c-hour { width: 5.5rem; }
-  col.c-temp { width: 4.5rem; }
-  col.c-wind { width: 8rem; }
-  col.c-rain { width: 4.5rem; }
-  col.c-key  { width: 9rem; }
-
-  /* --------------------------------------------------------- wind bars */
-  .chart {
+  /* ------------------------------------------- middle: forecast rows */
+  .frows {
     display: flex;
-    align-items: flex-end;
-    gap: 2px;
-    width: 100%;
-    border-bottom: 1px solid var(--border);
+    flex-direction: column;
+    gap: 3px;
+    flex: 1 1 auto;
+    justify-content: space-between;
   }
-  .chart.wind { height: 90px; }
-  .chart.gust { height: 50px; margin-top: .5rem; }
-  .chart .slot { flex: 1 1 0; min-width: 0; display: flex; align-items: flex-end; height: 100%; }
-  .chart .bar { width: 100%; background: var(--text); }
-  .chart.gust .bar { background: var(--accent); }
-  .chart-meta {
+  .frow {
+    display: grid;
+    grid-template-columns: 52px 46px 96px 1fr 104px;
+    align-items: center;
+    gap: 10px;
+    min-height: 0;
+    padding: 3px 6px 3px 7px;
+    border-left: 3px solid transparent;
+    border-radius: 4px;
+    font-size: 13px;
+  }
+  /* A paddle window: green edge and green hour, matching the legend. */
+  .frow.pw {
+    border-left-color: var(--green);
+    background: color-mix(in srgb, var(--green) 7%, transparent);
+  }
+  .fh { color: var(--muted); }
+  .frow.pw .fh { color: var(--green); }
+  .chip {
+    display: inline-block;
+    text-align: center;
+    border-radius: 4px;
+    padding: 2px 0;
+    color: var(--text);
+    font-weight: 600;
+    font-size: 13px;
+  }
+  .fw { color: var(--muted); }
+  .fw b { color: var(--text); font-weight: 600; }
+  .fw i { font-style: normal; color: var(--muted); font-size: 11px; margin-left: 2px; }
+  .bar { display: flex; align-items: center; gap: 8px; }
+  .track {
+    flex: 1 1 auto;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--border);
+    overflow: hidden;
+  }
+  .fill {
+    display: block;
+    height: 100%;
+    border-radius: 3px;
+    background: color-mix(in srgb, var(--text) 55%, transparent);
+  }
+  .bar em {
+    font-style: normal;
     color: var(--muted);
-    font-size: 11.5px;
-    margin: .2rem 0 0;
+    font-size: 12px;
+    width: 32px;
+    text-align: right;
   }
-  .chart-axis {
+  .fs {
+    color: var(--muted);
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* --------------------------------------------------- 24-hour chart */
+  .chead { display: flex; align-items: baseline; gap: 14px; margin-bottom: 6px; }
+  .chead .lbl { margin: 0; }
+  .leg { margin-left: auto; display: flex; gap: 14px; font-size: 11px; color: var(--muted); }
+  .leg i {
+    display: inline-block;
+    width: 10px; height: 8px;
+    border-radius: 2px;
+    margin-right: 5px;
+    vertical-align: middle;
+    background: color-mix(in srgb, var(--text) 65%, transparent);
+  }
+  .leg .go { height: 0; border-top: 2px solid var(--accent); border-radius: 0; }
+  .plot { position: relative; height: 108px; padding-left: 26px; }
+  .gl {
+    position: absolute;
+    left: 26px; right: 0;
+    border-top: 1px solid var(--border);
+  }
+  .gl i {
+    position: absolute;
+    left: -26px;
+    top: -7px;
+    width: 22px;
+    text-align: right;
+    font-style: normal;
+    font-size: 10px;
+    color: var(--muted);
+  }
+  .slots { position: absolute; inset: 0 0 0 26px; display: flex; align-items: flex-end; gap: 2px; }
+  .slot { position: relative; flex: 1 1 0; min-width: 0; height: 100%; }
+  .wbar {
+    position: absolute;
+    left: 1px; right: 1px; bottom: 0;
+    border-radius: 2px 2px 0 0;
+    background: color-mix(in srgb, var(--text) 65%, transparent);
+  }
+  .gmark { position: absolute; left: 0; right: 0; height: 2px; background: var(--accent); }
+  .xlabs {
     display: flex;
     justify-content: space-between;
+    margin: 4px 0 0 26px;
+    font-size: 10px;
     color: var(--muted);
-    font-size: 11px;
-    margin-top: .15rem;
+  }
+  .xlabs .now { color: var(--accent); font-weight: 600; }
+
+  /* ------------------------------------------------------ right: 7 days */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  td { padding: 6px 4px; white-space: nowrap; color: var(--text); }
+  tbody tr:nth-child(odd) td { background: var(--surface-strong); }
+  tr td:first-child { border-radius: 4px 0 0 4px; padding-left: 8px; }
+  tr td:last-child { border-radius: 0 4px 4px 0; padding-right: 8px; }
+  .dg { text-align: center; width: 26px; }
+  .dhi { color: var(--text); font-weight: 600; text-align: right; width: 42px; }
+  .dlo { color: var(--text); font-weight: 400; text-align: right; width: 42px; }
+  .dw, .dgu { text-align: right; color: var(--muted); }
+  .dw { width: 34px; }
+  .dgu { width: 38px; }
+  /* 20 mph is where a gust starts deciding the day. */
+  .dgu.hot { color: var(--accent); font-weight: 600; }
+  thead td {
+    background: transparent !important;
+    color: var(--muted);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    padding-bottom: 2px;
   }
 
-  /* ------------------------------------------------------------- footer */
-  footer {
+  .legend { display: flex; flex-direction: column; gap: 10px; }
+  .li { display: flex; align-items: center; gap: 9px; font-size: 12.5px; color: var(--muted); }
+  .li s {
+    text-decoration: none;
+    display: inline-block;
+    width: 3px; height: 15px;
+    border-radius: 2px;
     flex: 0 0 auto;
-    color: var(--muted);
-    border-top: 1px solid var(--border);
-    padding: .3rem 1.25rem .35rem;
-    text-align: center;
-    font-size: 12px;
-    line-height: 1.45;
   }
-  footer .stale { color: var(--red); }
-  a { color: var(--accent); }
+  .li .e1 { background: var(--green); }
+  .li .e2 { background: var(--accent); }
+  .li .e3 { background: var(--red); }
+  .li b { color: var(--text); font-weight: 600; }
+
+  footer { color: var(--muted); font-size: 12px; flex: 0 0 auto; }
 
   /* Narrow: one column, in reading order, and the page may scroll. */
-  @media (max-width: 999px) {
-    body { height: auto; min-height: 100dvh; overflow: auto; }
-    .sheet {
-      display: flex;
-      flex-direction: column;
-      padding: .6rem 1rem .8rem;
-    }
-    /* reading order on a phone: current, wind + last 3h, forecast, 7 days */
-    .sheet > :nth-child(1) { order: 1; }
-    .sheet > :nth-child(2) { order: 2; }
-    .sheet > :nth-child(3) { order: 4; }  /* 7 days last */
-    .sheet > .wide         { order: 3; }
-    .sheet > * + * { margin-top: 1rem; }
-    .page-header, footer { padding-left: 1rem; padding-right: 1rem; }
+  @media (max-width: 1099px) {
+    .grid { grid-template-columns: 1fr; }
+    .card.grow { overflow: visible; }
+    .plot { height: 140px; }
   }
-
   @media (max-width: 640px) {
-    /* Give the verdict the full width; the toggle takes its own short row. */
-    .page-header {
-      flex-direction: column;
-      align-items: stretch;
-      gap: .25rem;
-      padding-top: .35rem;
-    }
-    .page-header .theme-toggle { order: -1; align-self: flex-end; }
-    .verdict { font-size: 1.15rem; }
-    .tbl table { font-size: 13px; }
-    col.c-hour { width: 4.2rem; }
-    col.c-temp { width: 3.2rem; }
-    col.c-wind { width: 5.6rem; }
-    col.c-rain { width: 3.2rem; }
+    .alert { flex-wrap: wrap; gap: 8px 12px; }
+    .alert .right { margin-left: 0; width: 100%; }
+    .frow { grid-template-columns: 46px 42px 80px 1fr; }
+    .frow .fs { display: none; }
   }
 </style>
 </head>
 <body>
 
-<header class="page-header">
-  <h1 class="sr-only">lake mood</h1>
-  <p class="verdict">
+<div class="wrap">
+
+  <header class="alert{% if verdict.storm_note or verdict.level == 'whitecaps' %} warn{% endif %}">
+    <h1 class="sr-only">lake mood</h1>
     <span class="level">{{ verdict.label }}</span>
-    <span class="note">— {{ verdict.note }}</span>
-  </p>
-  <button id="theme-toggle" class="theme-toggle" type="button"
-          aria-label="Toggle color theme">theme</button>
-</header>
+    <span class="note">{{ verdict.base_note }}{% if verdict.storm_note %}
+      <span class="storm">{{ verdict.storm_note }}</span>
+      {% endif %}</span>
+    <span class="right">
+      <button id="theme-toggle" class="theme-toggle" type="button"
+              aria-label="Toggle color theme">theme</button>
+      <span class="upd">updated {{ updated }}{% if stale %}
+        <span class="stale">· stale, no observation in {{ stale_minutes }}+ min</span>
+        {% endif %}</span>
+    </span>
+  </header>
 
-<main class="sheet">
+  <div class="grid">
 
-  <div class="col">
-    <h2>current</h2>
-    <div class="tbl">
-      <table>
-        <colgroup><col class="c-key"><col></colgroup>
-        <tbody>
-        {% for k, v in now_rows %}
-          <tr><td class="k">{{ k }}</td><td class="v">{{ v }}</td></tr>
-        {% else %}
-          <tr><td class="k">—</td><td class="v">no observations yet</td></tr>
-        {% endfor %}
-        </tbody>
-      </table>
+    <!-- LEFT: current conditions -->
+    <div class="col">
+      <div class="card grow vc">
+        <p class="lbl">air temperature</p>
+        <div class="temp"><span class="big">{{ temp_f }}</span><span class="u">°F</span></div>
+        <div class="sub">dew point <b>{{ now['dew point'] | default('—', true) }}</b></div>
+      </div>
+
+      <div class="card grow vc">
+        <p class="lbl">wind</p>
+        <div class="winds">
+          <div class="s">
+            <div class="big">{{ wind_now.sustained }}</div>
+            <div class="u2">{{ wind_now.sustained_label }}</div>
+          </div>
+          <div class="g">
+            <div class="big">{{ wind_now.gust }}</div>
+            <div class="u2">gust mph</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="badges">
+        <div class="badge"><div class="k">humidity</div><div class="v">{{ now['humidity'] | default('—', true) }}</div></div>
+        <div class="badge"><div class="k">pressure</div><div class="v">{{ now['pressure'] | default('—', true) }}</div></div>
+        <div class="badge"><div class="k">visibility</div><div class="v">{{ now['visibility'] | default('—', true) }}</div></div>
+        <div class="badge"><div class="k">sky</div><div class="v">{{ now['sky'] | default('—', true) }}</div></div>
+      </div>
+
+      <div class="card grow">
+        <p class="lbl">last 3 hours</p>
+        <div class="l3">
+          <div class="l3row l3head">
+            <span>time</span><span class="l3w">wind</span><span class="l3g">gust</span>
+          </div>
+          {% for r in recent_rows %}
+          <div class="l3row">
+            <span>{{ r.time }}</span><span class="l3w">{{ r.wind }}</span><span class="l3g">{{ r.gust }}</span>
+          </div>
+          {% else %}
+          <div class="l3row"><span>—</span><span class="l3w">—</span><span class="l3g">—</span></div>
+          {% endfor %}
+        </div>
+      </div>
     </div>
-  </div>
 
-  <div class="col">
-    <section>
-      <h2>wind, last 24h</h2>
-      <div class="chart wind" role="img"
-           aria-label="sustained wind by hour, last 24 hours">
-        {% for b in wind_bars %}
-        <span class="slot">{% if b.pct %}<span class="bar" style="height:{{ b.pct }}%"></span>{% endif %}</span>
-        {% endfor %}
+    <!-- MIDDLE: what is coming, and what just happened -->
+    <div class="col">
+      <div class="card grow">
+        <p class="lbl">next 12 hours</p>
+        <div class="frows">
+          {% for f in forecast %}
+          <div class="frow{% if f.good %} pw{% endif %}">
+            <span class="fh">{{ f.hour }}</span>
+            <span class="chip" style="background:color-mix(in srgb, var(--accent) {{ f.chip }}%, transparent)">{{ f.temp }}</span>
+            <span class="fw">{{ f.dir }} <b>{{ f.wind_num }}</b><i>mph</i></span>
+            <span class="bar">
+              <span class="track"><span class="fill" style="width:{{ f.rain_pct }}%"></span></span><em>{{ f.rain }}</em>
+            </span>
+            <span class="fs">{{ f.short }}</span>
+          </div>
+          {% else %}
+          <div class="frow"><span class="fh">—</span><span class="chip"></span><span class="fw"></span>
+            <span class="bar"></span><span class="fs">no forecast yet</span></div>
+          {% endfor %}
+        </div>
       </div>
-      <p class="chart-meta">sustained {{ wind_min }}–{{ wind_max }} mph</p>
-      <div class="chart gust" role="img"
-           aria-label="wind gusts by hour, last 24 hours">
-        {% for b in gust_bars %}
-        <span class="slot">{% if b.pct %}<span class="bar" style="height:{{ b.pct }}%"></span>{% endif %}</span>
-        {% endfor %}
-      </div>
-      <p class="chart-meta">peak gust {{ gust_max }} mph</p>
-      <div class="chart-axis"><span>{{ bars_start }}</span><span>{{ bars_end }}</span></div>
-    </section>
 
-    <section>
-      <h2>last 3 hours</h2>
-      <div class="tbl">
+      <div class="card fixed">
+        <div class="chead">
+          <p class="lbl">wind, last 24h</p>
+          <span class="leg">
+            <span><i></i>sustained {{ wind_min }}–{{ wind_max }}</span>
+            <span><i class="go"></i>gusts, peak {{ gust_max }}</span>
+          </span>
+        </div>
+        <div class="plot" role="img" aria-label="sustained wind and gusts, last 24 hours">
+          {% for t in chart.ticks %}
+          <span class="gl" style="bottom:{{ t.pct }}%"><i>{{ t.label }}</i></span>
+          {% endfor %}
+          <div class="slots">
+            {% for s in chart.slots %}
+            <span class="slot">
+              {% if s.wind %}<span class="wbar" style="height:{{ s.wind }}%"></span>{% endif %}
+              {% if s.gust %}<span class="gmark" style="bottom:{{ s.gust }}%"></span>{% endif %}
+            </span>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="xlabs">
+          <span>{{ chart.start }}</span><span>{{ chart.mid }}</span><span class="now">now</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: the week, and how to read the page -->
+    <div class="col">
+      <div class="card grow">
+        <p class="lbl">7 days</p>
         <table>
           <thead>
-            <tr><th>time</th><th class="n">wind mph</th><th class="n">gust mph</th></tr>
+            <tr><td>day</td><td></td><td style="text-align:right">high</td>
+              <td style="text-align:right">low</td><td style="text-align:right">wind</td>
+              <td style="text-align:right">gust</td></tr>
           </thead>
           <tbody>
-          {% for r in recent_rows %}
+          {% for d in days %}
             <tr>
-              <td class="k">{{ r.time }}</td>
-              <td class="n">{{ r.wind }}</td>
-              <td class="n">{{ r.gust }}</td>
+              <td>{{ d.date }}</td>
+              <td class="dg">{{ d.glyph }}</td>
+              <td class="dhi">{{ d.hi }}</td>
+              <td class="dlo">{{ d.lo }}</td>
+              <td class="dw">{{ d.wind }}</td>
+              <td class="dgu{% if d.gusty %} hot{% endif %}">{{ d.gust }}</td>
             </tr>
           {% else %}
-            <tr><td class="k">—</td><td class="n"></td><td class="n"></td></tr>
+            <tr><td>—</td><td class="dg"></td><td class="dhi"></td><td class="dlo"></td>
+              <td class="dw"></td><td class="dgu">no history yet</td></tr>
           {% endfor %}
           </tbody>
         </table>
       </div>
-    </section>
-  </div>
 
-  <div class="col">
-    <h2>7 days</h2>
-    <div class="tbl">
-      <table>
-        <thead>
-          <tr>
-            <th>date</th><th class="n">high</th><th class="n">low</th>
-            <th class="n">max wind</th><th class="n">max gust</th>
-          </tr>
-        </thead>
-        <tbody>
-        {% for d in days %}
-          <tr>
-            <td class="k">{{ d.date }}</td>
-            <td class="n">{{ d.hi }}</td>
-            <td class="n">{{ d.lo }}</td>
-            <td class="n">{{ d.wind }}</td>
-            <td class="n">{{ d.gust }}</td>
-          </tr>
-        {% else %}
-          <tr><td class="k">—</td><td class="n"></td><td class="n"></td><td class="n"></td><td class="n">no history yet</td></tr>
-        {% endfor %}
-        </tbody>
-      </table>
+      <div class="card fixed">
+        <p class="lbl">how to read this</p>
+        <div class="legend">
+          <div class="li"><s class="e1"></s><span><b>green edge</b> — paddle window, wind under 8 mph and low rain odds</span></div>
+          <div class="li"><s class="e2"></s><span><b>orange</b> — gusts, always the number that decides the day</span></div>
+          <div class="li"><s class="e3"></s><span><b>red</b> — warning state: whitecaps, chop or a storm flag</span></div>
+        </div>
+      </div>
     </div>
+
   </div>
 
-  <div class="wide">
-    <h2>next 12 hours</h2>
-    <div class="tbl fc">
-      <table>
-        <colgroup>
-          <col class="c-hour"><col class="c-temp"><col class="c-wind">
-          <col class="c-rain"><col>
-        </colgroup>
-        <thead>
-          <tr>
-            <th>hour</th><th class="n">temp</th><th>wind</th><th class="n">rain</th><th>sky</th>
-          </tr>
-        </thead>
-        <tbody>
-        {% for f in forecast %}
-          <tr{% if f.good %} class="good"{% endif %}>
-            <td class="k">{{ f.hour }}</td>
-            <td class="n">{{ f.temp }}</td>
-            <td class="n">{{ f.wind }}</td>
-            <td class="n">{{ f.rain }}</td>
-            <td class="s">{{ f.short }}</td>
-          </tr>
-        {% else %}
-          <tr><td class="k">—</td><td class="n"></td><td class="n"></td><td class="n"></td><td class="s">no forecast yet</td></tr>
-        {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
+  <footer>
+    mountain creek lake · {{ station }} · data: National Weather Service ·
+    page refreshes every 5 min, station polled every 10 min
+  </footer>
 
-</main>
-
-<footer>
-  mountain creek lake · {{ station }} · updated {{ updated }}
-  {% if stale %}
-  <span class="stale">· stale, no observation in {{ stale_minutes }}+ min</span>
-  {% endif %}
-  · data: National Weather Service · page refreshes every 5 min,
-  station polled every 10 min
-</footer>
+</div>
 
 <script src="/static/theme-toggle.js" defer></script>
 </body>

@@ -159,6 +159,8 @@ def kayak_verdict(sustained_mph, gust_mph=None, wind_dir=None, forecast_hours=No
             "level": "unknown",
             "label": "no data",
             "note": "No recent observation from KGPM.",
+            "base_note": "No recent observation from KGPM.",
+            "storm_note": "",
         }
 
     # Gust-only: judge it as if the gust were also the sustained wind, which
@@ -199,11 +201,18 @@ def kayak_verdict(sustained_mph, gust_mph=None, wind_dir=None, forecast_hours=No
             gust_txt = f" gusting {gust:.0f}"
         core = f"{wind_txt}{gust_txt}"
 
-    note = f"{core} ({at} obs)." if at else f"{core}."
+    base = f"{core} ({at} obs)." if at else f"{core}."
 
-    if storm_flag(forecast_hours):
-        extra = _storm_note(forecast_hours)
-        if extra:
-            note = f"{note} {extra}"
+    storm = _storm_note(forecast_hours) if storm_flag(forecast_hours) else ""
+    note = f"{base} {storm}" if storm else base
 
-    return {"level": level, "label": label, "note": note}
+    # `note` stays the whole sentence (JSON, tests, anything that wants one
+    # string); `base_note` and `storm_note` let the page colour the storm
+    # clause on its own without re-parsing the text.
+    return {
+        "level": level,
+        "label": label,
+        "note": note,
+        "base_note": base,
+        "storm_note": storm,
+    }

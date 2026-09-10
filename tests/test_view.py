@@ -2,9 +2,21 @@
 
 from zoneinfo import ZoneInfo
 
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
-from app.main import has_wind, now_row, recent_hours, verdict_observation
+from app.main import (
+    CHIP_MAX,
+    CHIP_MIN,
+    chip_pct,
+    daily_summary,
+    day_glyph,
+    forecast_view,
+    has_wind,
+    now_row,
+    recent_hours,
+    short_label,
+    verdict_observation,
+)
 
 TZ = ZoneInfo("America/Chicago")
 
@@ -138,3 +150,70 @@ def test_now_row_variable_wind_with_a_gust():
     rows = now_row(obs("2026-09-10T22:35:00+00:00", None, 24.16, None), TZ)
     assert _val(rows, "wind") == "variable"
     assert _val(rows, "gust") == "24 mph"
+
+
+# ------------------------------------------------- forecast chips and glyphs
+
+def test_chip_pct_spans_the_row_range():
+    assert chip_pct(80.0, 80.0, 100.0) == CHIP_MIN
+    assert chip_pct(100.0, 80.0, 100.0) == CHIP_MAX
+    assert chip_pct(90.0, 80.0, 100.0) == 24  # midpoint of 8..40
+
+
+def test_chip_pct_clamps_and_survives_a_flat_or_unknown_range():
+    assert chip_pct(120.0, 80.0, 100.0) == CHIP_MAX
+    assert chip_pct(60.0, 80.0, 100.0) == CHIP_MIN
+    assert chip_pct(90.0, 90.0, 90.0) == CHIP_MIN   # every hour the same temp
+    assert chip_pct(None, 80.0, 100.0) == CHIP_MIN
+    assert chip_pct(90.0, None, None) == CHIP_MIN
+
+
+def test_forecast_view_chips_scale_across_the_rows_on_screen():
+    rows = [
+        {"start_ts": "2026-09-10T23:00:00+00:00", "temp_f": 97.0, "wind_mph": 5.0,
+         "wind_dir": "SE", "pop": 28.0, "short": "Chance Showers And Thunderstorms"},
+        {"start_ts": "2026-09-11T00:00:00+00:00", "temp_f": 81.0, "wind_mph": 12.0,
+         "wind_dir": "S", "pop": 60.0, "short": "Slight Chance Rain Showers"},
+    ]
+    out = forecast_view(rows, TZ)
+    assert [f["chip"] for f in out] == [CHIP_MAX, CHIP_MIN]
+    assert [f["short"] for f in out] == ["t-storms", "sl. showers"]
+    assert [f["rain_pct"] for f in out] == [28, 60]
+    assert out[0]["good"] is True and out[1]["good"] is False
+
+
+def test_short_label_maps_known_phrases_and_lowercases_the_rest():
+    assert short_label("Slight Chance Showers And Thunderstorms") == "sl. t-storms"
+    assert short_label("Mostly Cloudy") == "mostly cloudy"
+    assert short_label("Patchy Fog") == "patchy fog"
+    assert short_label(None) == "—"
+
+
+def test_day_glyph_prefers_forecast_wording():
+    assert day_glyph(["Chance Showers And Thunderstorms"], "CLR") == "⛈️"
+    assert day_glyph(["Slight Chance Rain Showers"], "CLR") == "🌧️"
+    assert day_glyph(["Mostly Cloudy"], "CLR") == "☁️"
+    assert day_glyph(["Sunny"], "OVC") == "☀️"
+
+
+def test_day_glyph_falls_back_to_the_sky_code():
+    assert day_glyph(None, "OVC") == "☁️"
+    assert day_glyph([], "BKN045") == "☁️"
+    assert day_glyph([], "SCT050") == "☀️"
+    assert day_glyph([], "CLR") == "☀️"
+    assert day_glyph([], None) == "·"
+
+
+def test_daily_summary_carries_a_glyph_and_flags_a_deciding_gust():
+    rows = [
+        {"ts": "2026-09-10T20:53:00+00:00", "temp_f": 100.0, "wind_mph": 10.0,
+         "gust_mph": 24.0, "sky": "OVC008"},
+        {"ts": "2026-09-09T20:53:00+00:00", "temp_f": 90.0, "wind_mph": 8.0,
+         "gust_mph": 12.0, "sky": "CLR"},
+    ]
+    out = daily_summary(rows, TZ)
+    assert out[0]["glyph"] == "☁️" and out[0]["gusty"] is True
+    assert out[1]["glyph"] == "☀️" and out[1]["gusty"] is False
+    # a forecast for today wins over the METAR sky
+    out = daily_summary(rows, TZ, shorts_by_date={date(2026, 9, 10): ["Sunny"]})
+    assert out[0]["glyph"] == "☀️"

@@ -235,15 +235,114 @@ def bars(values, scale):
     return out
 
 
-def daily_summary(rows, tz, days=HISTORY_DAYS):
-    """Group observations by local calendar date -> high/low/max wind/max gust."""
+# --- forecast text ----------------------------------------------------------
+
+# NWS "short" strings are title-case sentences; the dense forecast column has
+# room for about a dozen characters. Anything unmapped falls back to lowercase.
+_SHORT_LABELS = {
+    "slight chance showers and thunderstorms": "sl. t-storms",
+    "chance showers and thunderstorms": "t-storms",
+    "showers and thunderstorms likely": "t-storms likely",
+    "showers and thunderstorms": "t-storms",
+    "slight chance rain showers": "sl. showers",
+    "chance rain showers": "showers",
+    "rain showers likely": "showers likely",
+    "isolated rain showers": "iso. showers",
+    "scattered rain showers": "sct. showers",
+    "slight chance light rain": "sl. rain",
+    "chance light rain": "light rain",
+}
+
+
+def short_label(s):
+    """Shorten an NWS forecast 'short' string for the narrow sky column."""
+    if not s:
+        return "—"
+    t = " ".join(str(s).split()).lower()
+    return _SHORT_LABELS.get(t, t)
+
+
+# --- forecast temperature chips ---------------------------------------------
+
+CHIP_MIN = 8
+CHIP_MAX = 40
+
+
+def chip_pct(temp, lo, hi):
+    """Accent share (CHIP_MIN..CHIP_MAX) for a forecast row's temp chip.
+
+    The scale spans only the range present in the rows on screen, so a flat
+    12 hours still reads as a flat block rather than a fake gradient. A
+    degenerate or unknown range pins every chip to the faintest step.
+    """
+    if temp is None or lo is None or hi is None or hi <= lo:
+        return CHIP_MIN
+    frac = max(0.0, min(1.0, (float(temp) - float(lo)) / (float(hi) - float(lo))))
+    return int(round(CHIP_MIN + frac * (CHIP_MAX - CHIP_MIN)))
+
+
+# --- daily condition glyph ---------------------------------------------------
+
+def day_glyph(shorts=None, sky=None):
+    """One emoji for a day: forecast wording when we have it, else METAR sky."""
+    text = " ".join(str(s) for s in (shorts or ()) if s).lower()
+    if text:
+        if "thunder" in text:
+            return "⛈️"
+        if "rain" in text or "shower" in text:
+            return "🌧️"
+        if "cloud" in text or "overcast" in text:
+            return "☁️"
+        if "sun" in text or "clear" in text or "fair" in text:
+            return "☀️"
+    s = (sky or "").upper()
+    if "OVC" in s or "BKN" in s:
+        return "☁️"
+    if "SCT" in s or "FEW" in s or "CLR" in s or "SKC" in s or "NCD" in s:
+        return "☀️"
+    return "·"
+
+
+# --- hero readouts -----------------------------------------------------------
+
+def wind_hero(obs):
+    """Big wind numbers for the left column: sustained word/number and gust."""
+    o = obs or {}
+    wind = o.get("wind_mph")
+    gust = o.get("gust_mph")
+    name = wind_dir_name(o.get("wind_dir"))
+    if wind is None:
+        sustained = "var" if gust is not None else "—"
+        label = "sustained"
+    elif wind < 1:
+        sustained = "calm"
+        label = "sustained"
+    else:
+        sustained = fmt_num(wind)
+        label = f"{name} sustained".strip()
+    return {
+        "sustained": sustained,
+        "sustained_label": label,
+        "gust": fmt_num(gust) if gust else "—",
+    }
+
+
+def daily_summary(rows, tz, days=HISTORY_DAYS, shorts_by_date=None):
+    """Group observations by local calendar date -> high/low/max wind/max gust.
+
+    Each day also carries a condition glyph: the forecast wording for that
+    date when we have any (``shorts_by_date``), otherwise the day's newest
+    METAR sky code.
+    """
     buckets: dict = {}
     for r in rows:
         d = _local(r.get("ts"), tz)
         if not d:
             continue
         b = buckets.setdefault(d.date(), {"date": d, "hi": None, "lo": None,
-                                          "wind": None, "gust": None})
+                                          "wind": None, "gust": None, "sky": None})
+        if r.get("sky"):
+            b["sky"] = r["sky"]
         t = r.get("temp_f")
         if t is not None:
             b["hi"] = t if b["hi"] is None else max(b["hi"], t)
@@ -256,30 +355,67 @@ def daily_summary(rows, tz, days=HISTORY_DAYS):
         b = buckets[day]
         out.append({
             "date": b["date"].strftime("%a %b %-d"),
+            "glyph": day_glyph((shorts_by_date or {}).get(day), b["sky"]),
             "hi": fmt_num(b["hi"], 0, "°"),
             "lo": fmt_num(b["lo"], 0, "°"),
-            "wind": fmt_num(b["wind"], 0, " mph"),
-            "gust": fmt_num(b["gust"], 0, " mph") if b["gust"] else "—",
+            "wind": fmt_num(b["wind"], 0),
+            "gust": fmt_num(b["gust"], 0) if b["gust"] else "—",
+            "gusty": bool(b["gust"] and b["gust"] >= 20),
         })
     return out
 
 
 def forecast_view(rows, tz, limit=FORECAST_HOURS):
+    used = list(rows[:limit])
+    temps = [r.get("temp_f") for r in used if r.get("temp_f") is not None]
+    lo = min(temps) if temps else None
+    hi = max(temps) if temps else None
     out = []
-    for r in rows[:limit]:
+    for r in used:
         wind = r.get("wind_mph")
         pop = r.get("pop") or 0.0
         out.append({
             "hour": fmt_hour(r.get("start_ts"), tz),
             "temp": fmt_num(r.get("temp_f"), 0, "°"),
+            "chip": chip_pct(r.get("temp_f"), lo, hi),
+            "dir": r.get("wind_dir") or "",
+            "wind_num": fmt_num(wind),
             "wind": f"{r.get('wind_dir') or ''} {fmt_num(wind)} mph".strip(),
             # NB: not "pop" — Jinja resolves `f.pop` to dict.pop, not the key.
             "rain": f"{int(pop)}%",
-            "short": r.get("short") or "—",
+            "rain_pct": int(pop),
+            "short": short_label(r.get("short")),
             # A candidate paddle window: light wind and unlikely to rain.
             "good": wind is not None and wind < 8 and pop < 30,
         })
     return out
+
+
+def chart_view(starts, wind, gust, tz):
+    """Geometry for the 24-hour wind chart, as percentages of a shared scale.
+
+    Sustained values are columns (height), gusts are markers sitting at their
+    own height on the same axis, so one glance compares the two. Gridlines
+    step every 10 mph up to the scale top.
+    """
+    scale = max([v for v in wind + gust if v is not None] or [0]) or None
+    w = bars(wind, scale)
+    g = bars(gust, scale)
+    slots = [{"wind": a["pct"], "gust": b["pct"]} for a, b in zip(w, g)]
+    ticks = []
+    if scale:
+        step = 10
+        v = 0
+        while v <= scale:
+            ticks.append({"pct": round(v / scale * 100, 1), "label": str(v)})
+            v += step
+    mid = starts[len(starts) // 2] if starts else None
+    return {
+        "slots": slots,
+        "ticks": ticks,
+        "start": fmt_hour(starts[0].isoformat(), tz) if starts else "",
+        "mid": fmt_hour(mid.isoformat(), tz) if mid else "",
+    }
 
 
 # -------------------------------------------------------------------- routes
@@ -308,9 +444,16 @@ def index():
     )
 
     starts, wind, gust = hourly_buckets(recent, 24)
-    scale = max([v for v in wind + gust if v is not None] or [0]) or None
     present_w = [v for v in wind if v is not None]
     present_g = [v for v in gust if v is not None]
+
+    # Forecast wording keyed by local date, so today's row in the 7-day table
+    # shows what is coming rather than what the sky did at 3 a.m.
+    shorts_by_date: dict = {}
+    for r in fc_rows:
+        d = _local(r.get("start_ts"), tz)
+        if d and r.get("short"):
+            shorts_by_date.setdefault(d.date(), []).append(r["short"])
 
     obs_dt = _dt((obs or {}).get("ts"))
     stale = (
@@ -324,16 +467,16 @@ def index():
         stale=stale,
         stale_minutes=STALE_MINUTES,
         now_rows=now_row(obs, tz),
+        now=dict(now_row(obs, tz)),
+        temp_f=fmt_num((obs or {}).get("temp_f"), 0),
+        wind_now=wind_hero(v_obs if v_fallback else obs),
         recent_rows=recent_hours(recent, tz),
-        wind_bars=bars(wind, scale),
-        gust_bars=bars(gust, scale),
-        bars_start=(fmt_hour(starts[0].isoformat(), tz) + " yesterday") if starts else "",
-        bars_end=fmt_hour(starts[-1].isoformat(), tz) if starts else "",
+        chart=chart_view(starts, wind, gust, tz),
         wind_min=fmt_num(min(present_w), 0) if present_w else "—",
         wind_max=fmt_num(max(present_w), 0) if present_w else "—",
         gust_max=fmt_num(max(present_g), 0) if present_g else "—",
         forecast=forecast_view(fc_rows, tz),
-        days=daily_summary(week, tz),
+        days=daily_summary(week, tz, shorts_by_date=shorts_by_date),
         station=nws.STATION,
     )
     return HTMLResponse(html)
