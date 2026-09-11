@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="refresh" content="300">
-<title>🏞️</title>
+<title>lake!</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.95em' font-size='92'%3E🏞️%3C/text%3E%3C/svg%3E">
 <script>
   (function () {
@@ -63,7 +63,7 @@
     padding: 8px 16px;
     border: 1px solid var(--border);
     border-left: 4px solid var(--accent);
-    border-radius: 8px;
+    border-radius: 0;
     background: var(--accent-soft);
     flex: 0 0 auto;
   }
@@ -98,9 +98,10 @@
   }
   .col { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
   .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
     padding: 12px 14px;
     min-height: 0;
   }
@@ -133,9 +134,10 @@
   }
   .badges { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; flex: 0 0 auto; }
   .badge {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 6px;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
     padding: 7px 9px;
   }
   .badge .k {
@@ -190,7 +192,6 @@
   /* A paddle window: green edge and green hour, matching the legend. */
   .frow.pw {
     border-left-color: var(--green);
-    background: color-mix(in srgb, var(--green) 7%, transparent);
   }
   .fh { color: var(--muted); }
   .frow.pw .fh { color: var(--green); }
