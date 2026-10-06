@@ -20,7 +20,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from . import db, nws
 from .poller import Poller
-from .verdict import dead_flat, kayak_verdict, wind_dir_name
+from .verdict import dead_flat, dead_still, kayak_verdict, wind_dir_name
 
 logging.basicConfig(
     level=os.environ.get("LOG_LEVEL", "INFO").upper(),
@@ -175,21 +175,21 @@ def verdict_observation(obs, rows, minutes=VERDICT_FALLBACK_MINUTES, now=None):
     return obs, False
 
 
-def calm_streak(rows):
-    """How long the station has read dead flat, as (minutes, start row).
+def calm_streak(rows, qualifies=dead_flat):
+    """How long every reading has passed `qualifies`, as (minutes, start row).
 
     Walks back from the newest observation that reports wind; rows with
     neither number are skipped rather than breaking the streak. The duration
     is newest minus oldest calm reading, so a single calm reading is 0 min —
     the station has to show the calm holding, not just arriving. Returns
-    (None, None) when the newest wind reading is not dead flat.
+    (None, None) when the newest wind reading does not qualify.
     """
     newest = start = None
     for r in reversed(list(rows or ())):
         d = _dt(r.get("ts"))
         if d is None or not has_wind(r):
             continue
-        if not dead_flat(r.get("wind_mph"), r.get("gust_mph")):
+        if not qualifies(r.get("wind_mph"), r.get("gust_mph")):
             break
         if newest is None:
             newest = d
@@ -475,6 +475,7 @@ def index():
     ]
     v_obs, v_fallback = verdict_observation(obs, recent)
     calm_minutes, calm_start = calm_streak(recent)
+    still_minutes, still_start = calm_streak(recent, dead_still)
     verdict = kayak_verdict(
         (v_obs or {}).get("wind_mph"),
         (v_obs or {}).get("gust_mph"),
@@ -483,6 +484,8 @@ def index():
         at=fmt_clock((v_obs or {}).get("ts"), tz) if v_fallback else None,
         calm_minutes=calm_minutes,
         calm_since=fmt_since(calm_start.get("ts"), tz) if calm_start else None,
+        still_minutes=still_minutes,
+        still_since=fmt_since(still_start.get("ts"), tz) if still_start else None,
     )
 
     starts, wind, gust = hourly_buckets(recent, 24)

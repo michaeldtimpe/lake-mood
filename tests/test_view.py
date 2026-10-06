@@ -19,6 +19,7 @@ from app.main import (
     short_label,
     verdict_observation,
 )
+from app.verdict import dead_still
 
 TZ = ZoneInfo("America/Chicago")
 
@@ -248,3 +249,9 @@ def test_fmt_since_names_the_day_only_when_it_is_not_today():
     assert fmt_since(at(60)["ts"], TZ, now=NOW) == "4:40 pm"
     assert fmt_since(at(60 * 22)["ts"], TZ, now=NOW) == "yesterday 7:40 pm"
     assert fmt_since(at(60 * 70)["ts"], TZ, now=NOW) == "mon 7:40 pm"
+
+
+def test_calm_streak_with_dead_still_breaks_on_a_light_reading():
+    rows = [at(80, 0.0), at(60, 0.0), at(40, 3.4), at(20, 0.0), at(0, 0.0)]
+    assert calm_streak(rows, dead_still)[0] == 20
+    assert calm_streak(rows)[0] == 80

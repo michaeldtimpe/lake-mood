@@ -69,7 +69,8 @@
   }
   /* Whitecaps or a storm flag: the edge goes red, the level word does not. */
   .alert.warn { border-left-color: var(--red); }
-  /* Optimal: a held calm. Green, like a paddle window — edge and word both. */
+  /* Optimal: held glass. Green, like a paddle window — edge and word both.
+     Calm keeps the default accent. */
   .alert.go { border-left-color: var(--green); }
   .alert.go .level { color: var(--green); }
   .level {
@@ -486,7 +487,7 @@
       <div class="card fixed">
         <p class="lbl">how to read this</p>
         <div class="legend">
-          <div class="li"><s class="e1"></s><span><b>green edge</b> — paddle window, wind under 8 mph and low rain odds; <b>optimal</b> up top means under 5 mph for 30+ min</span></div>
+          <div class="li"><s class="e1"></s><span><b>green edge</b> — paddle window, wind under 8 mph and low rain odds; up top, <b>optimal</b> is 0 mph and <b>calm</b> under 5 mph, held 30+ min</span></div>
           <div class="li"><s class="e2"></s><span><b>orange</b> — gusts, always the number that decides the day</span></div>
           <div class="li"><s class="e3"></s><span><b>red</b> — warning state: whitecaps, chop or a storm flag</span></div>
         </div>

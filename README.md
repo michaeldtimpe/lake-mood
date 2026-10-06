@@ -9,9 +9,9 @@ on the lake's east shore) via the [National Weather Service API][nws], polled
 every 10 minutes, plus the hourly forecast for the same point every hour.
 Everything is kept forever in a small SQLite file; nothing is pruned.
 
-The page shows a wind verdict (`optimal` / `flat` / `ripples` / `chop` / `whitecaps`; `optimal` means
-every reading has been under 5 mph, gusts under 8, for 30+ minutes with no
-storm flag), the current conditions, a 24-hour wind sparkline, the next 12 forecast hours with
+The page shows a wind verdict (`optimal` / `calm` / `flat` / `ripples` / `chop` / `whitecaps`; `optimal`
+means every reading has been 0 mph for 30+ minutes, `calm` every reading under
+5 mph with gusts under 8, both with no storm flag), the current conditions, a 24-hour wind sparkline, the next 12 forecast hours with
 candidate paddle windows highlighted, and a 7-day summary. Server-rendered,
 no client JavaScript beyond the theme toggle, auto-refreshes every 5 minutes.
 

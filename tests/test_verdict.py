@@ -5,6 +5,7 @@ import pytest
 from app.verdict import (
     c_to_f,
     dead_flat,
+    dead_still,
     kayak_verdict,
     kmh_to_mph,
     m_to_mi,
@@ -205,25 +206,53 @@ def test_dead_flat(sustained, gust, flat):
     assert dead_flat(sustained, gust) is flat
 
 
-def test_verdict_optimal_after_a_held_calm():
-    v = kayak_verdict(0, None, calm_minutes=40, calm_since="5:35 am")
+@pytest.mark.parametrize("sustained,gust,still", [
+    (0, None, True),
+    (0.0, 0.0, True),
+    (3.4, None, False),
+    (0, 3, False),
+    (None, 0, False),
+    (None, None, False),
+])
+def test_dead_still(sustained, gust, still):
+    assert dead_still(sustained, gust) is still
+
+
+def test_verdict_optimal_after_held_glass():
+    v = kayak_verdict(0, None, calm_minutes=60, calm_since="5:15 am",
+                      still_minutes=40, still_since="5:35 am")
     assert v["level"] == "optimal"
-    assert v["label"] == "optimal"
-    assert v["note"] == "calm (0 mph), no gusts · dead flat since 5:35 am."
+    assert v["note"] == "calm (0 mph), no gusts · 0 mph since 5:35 am."
 
 
-def test_verdict_optimal_needs_the_full_window():
-    assert kayak_verdict(0, None, calm_minutes=20)["level"] == "flat"
+def test_verdict_calm_when_a_blip_broke_the_glass():
+    # Held under 5 mph, but the 0-mph streak is too short: calm, not optimal.
+    v = kayak_verdict(0, None, calm_minutes=60, calm_since="5:15 am",
+                      still_minutes=20, still_since="6:15 am")
+    assert v["level"] == "calm"
+    assert v["note"] == "calm (0 mph), no gusts · under 5 mph since 5:15 am."
+
+
+def test_verdict_calm_on_a_light_reading():
+    v = kayak_verdict(3.4, None, 360, calm_minutes=40, calm_since="5:35 am",
+                      still_minutes=60)
+    assert v["level"] == "calm"
+    assert v["note"] == "N 3 mph, no gusts · under 5 mph since 5:35 am."
+
+
+def test_verdict_held_levels_need_the_full_window():
+    assert kayak_verdict(0, None, calm_minutes=20, still_minutes=20)["level"] == "flat"
     assert kayak_verdict(0, None)["level"] == "flat"
 
 
-def test_verdict_optimal_needs_this_reading_dead_flat():
-    # Flat, but 6 mph is above the dead-flat ceiling.
-    assert kayak_verdict(6, None, calm_minutes=60)["level"] == "flat"
+def test_verdict_held_levels_need_this_reading_to_qualify():
+    # Flat, but 6 mph is above the calm ceiling.
+    assert kayak_verdict(6, None, calm_minutes=60, still_minutes=60)["level"] == "flat"
 
 
-def test_verdict_storm_blocks_optimal():
+def test_verdict_storm_blocks_held_levels():
     stormy = [{"pop": 70, "wind_mph": 5, "hour_label": "3 pm"}]
-    v = kayak_verdict(0, None, forecast_hours=stormy, calm_minutes=60)
+    v = kayak_verdict(0, None, forecast_hours=stormy, calm_minutes=60,
+                      still_minutes=60)
     assert v["level"] == "flat"
     assert v["storm_note"]
