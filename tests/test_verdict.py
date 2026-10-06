@@ -230,14 +230,14 @@ def test_verdict_calm_when_a_blip_broke_the_glass():
     v = kayak_verdict(0, None, calm_minutes=60, calm_since="5:15 am",
                       still_minutes=20, still_since="6:15 am")
     assert v["level"] == "calm"
-    assert v["note"] == "calm (0 mph), no gusts · under 5 mph since 5:15 am."
+    assert v["note"] == "calm (0 mph), no gusts · light wind since 5:15 am."
 
 
 def test_verdict_calm_on_a_light_reading():
     v = kayak_verdict(3.4, None, 360, calm_minutes=40, calm_since="5:35 am",
                       still_minutes=60)
     assert v["level"] == "calm"
-    assert v["note"] == "N 3 mph, no gusts · under 5 mph since 5:35 am."
+    assert v["note"] == "N 3 mph, no gusts · light wind since 5:35 am."
 
 
 def test_verdict_held_levels_need_the_full_window():
@@ -256,3 +256,11 @@ def test_verdict_storm_blocks_held_levels():
                       still_minutes=60)
     assert v["level"] == "flat"
     assert v["storm_note"]
+
+
+def test_verdict_calm_note_never_contradicts_a_rounded_speed():
+    # KGPM's 4 kt is 4.7 mph, which the note rounds to "5 mph"; the held
+    # phrase must not then claim "under 5 mph".
+    v = kayak_verdict(4.69756476, None, 70, calm_minutes=40, calm_since="7:35 pm")
+    assert v["level"] == "calm"
+    assert v["note"] == "ENE 5 mph, no gusts · light wind since 7:35 pm."

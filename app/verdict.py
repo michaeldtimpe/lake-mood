@@ -250,7 +250,7 @@ def kayak_verdict(sustained_mph, gust_mph=None, wind_dir=None, forecast_hours=No
 
     for lvl, held_for, since, qualifies, what in (
         ("optimal", still_minutes, still_since, dead_still, "0 mph"),
-        ("calm", calm_minutes, calm_since, dead_flat, "under 5 mph"),
+        ("calm", calm_minutes, calm_since, dead_flat, "light wind"),
     ):
         if (not storm and held_for is not None and held_for >= HELD_MINUTES
                 and qualifies(sustained_mph, gust_mph)):
