@@ -69,6 +69,9 @@
   }
   /* Whitecaps or a storm flag: the edge goes red, the level word does not. */
   .alert.warn { border-left-color: var(--red); }
+  /* Optimal: a held calm. Green, like a paddle window — edge and word both. */
+  .alert.go { border-left-color: var(--green); }
+  .alert.go .level { color: var(--green); }
   .level {
     font-size: 26px;
     font-weight: 700;
@@ -340,7 +343,7 @@
 
 <div class="wrap">
 
-  <header class="alert{% if verdict.storm_note or verdict.level == 'whitecaps' %} warn{% endif %}">
+  <header class="alert{% if verdict.storm_note or verdict.level == 'whitecaps' %} warn{% elif verdict.level == 'optimal' %} go{% endif %}">
     <h1 class="sr-only">lake mood</h1>
     <span class="level">{{ verdict.label }}</span>
     <span class="note">{{ verdict.base_note }}{% if verdict.storm_note %}
@@ -483,7 +486,7 @@
       <div class="card fixed">
         <p class="lbl">how to read this</p>
         <div class="legend">
-          <div class="li"><s class="e1"></s><span><b>green edge</b> — paddle window, wind under 8 mph and low rain odds</span></div>
+          <div class="li"><s class="e1"></s><span><b>green edge</b> — paddle window, wind under 8 mph and low rain odds; <b>optimal</b> up top means under 5 mph for 30+ min</span></div>
           <div class="li"><s class="e2"></s><span><b>orange</b> — gusts, always the number that decides the day</span></div>
           <div class="li"><s class="e3"></s><span><b>red</b> — warning state: whitecaps, chop or a storm flag</span></div>
         </div>

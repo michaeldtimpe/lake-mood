@@ -7,9 +7,11 @@ from datetime import date, datetime, timedelta, timezone
 from app.main import (
     CHIP_MAX,
     CHIP_MIN,
+    calm_streak,
     chip_pct,
     daily_summary,
     day_glyph,
+    fmt_since,
     forecast_view,
     has_wind,
     now_row,
@@ -217,3 +219,32 @@ def test_daily_summary_carries_a_glyph_and_flags_a_deciding_gust():
     # a forecast for today wins over the METAR sky
     out = daily_summary(rows, TZ, shorts_by_date={date(2026, 9, 10): ["Sunny"]})
     assert out[0]["glyph"] == "☀️"
+
+
+# -------------------------------------------------------------- calm streak
+
+def test_calm_streak_spans_newest_to_oldest_calm_reading():
+    rows = [at(100, 9.0), at(60, 0.0), at(40, 3.4), at(20, 0.0), at(0, 0.0)]
+    minutes, start = calm_streak(rows)
+    assert minutes == 60 and start is rows[1]
+
+
+def test_calm_streak_skips_windless_rows():
+    rows = [at(40, 0.0), at(20), at(0, 0.0)]
+    assert calm_streak(rows)[0] == 40
+
+
+def test_calm_streak_single_reading_is_zero():
+    assert calm_streak([at(20, 12.0), at(0, 0.0)])[0] == 0
+
+
+def test_calm_streak_broken_by_latest_reading():
+    assert calm_streak([at(40, 0.0), at(20, 0.0), at(0, 6.0)]) == (None, None)
+    assert calm_streak([]) == (None, None)
+
+
+def test_fmt_since_names_the_day_only_when_it_is_not_today():
+    # NOW is 5:40 pm CDT on Thu 10 Sep.
+    assert fmt_since(at(60)["ts"], TZ, now=NOW) == "4:40 pm"
+    assert fmt_since(at(60 * 22)["ts"], TZ, now=NOW) == "yesterday 7:40 pm"
+    assert fmt_since(at(60 * 70)["ts"], TZ, now=NOW) == "mon 7:40 pm"

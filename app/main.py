@@ -20,7 +20,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from . import db, nws
 from .poller import Poller
-from .verdict import kayak_verdict, wind_dir_name
+from .verdict import dead_flat, kayak_verdict, wind_dir_name
 
 logging.basicConfig(
     level=os.environ.get("LOG_LEVEL", "INFO").upper(),
@@ -96,6 +96,21 @@ def fmt_clock(ts, tz):
     return d.strftime("%I:%M %p").lstrip("0").lower() if d else "—"
 
 
+def fmt_since(ts, tz, now=None):
+    """'4:15 pm' today, 'yesterday 7:35 pm', else 'sat 7:35 pm'."""
+    d = _local(ts, tz)
+    if not d:
+        return "—"
+    today = (now or datetime.now(timezone.utc)).astimezone(tz).date()
+    clock = fmt_clock(ts, tz)
+    days = (today - d.date()).days
+    if days <= 0:
+        return clock
+    if days == 1:
+        return f"yesterday {clock}"
+    return f"{d.strftime('%a').lower()} {clock}"
+
+
 def fmt_hour(ts, tz):
     """'4 pm'"""
     d = _local(ts, tz)
@@ -158,6 +173,30 @@ def verdict_observation(obs, rows, minutes=VERDICT_FALLBACK_MINUTES, now=None):
         if has_wind(r):
             return r, True
     return obs, False
+
+
+def calm_streak(rows):
+    """How long the station has read dead flat, as (minutes, start row).
+
+    Walks back from the newest observation that reports wind; rows with
+    neither number are skipped rather than breaking the streak. The duration
+    is newest minus oldest calm reading, so a single calm reading is 0 min —
+    the station has to show the calm holding, not just arriving. Returns
+    (None, None) when the newest wind reading is not dead flat.
+    """
+    newest = start = None
+    for r in reversed(list(rows or ())):
+        d = _dt(r.get("ts"))
+        if d is None or not has_wind(r):
+            continue
+        if not dead_flat(r.get("wind_mph"), r.get("gust_mph")):
+            break
+        if newest is None:
+            newest = d
+        start = (d, r)
+    if newest is None:
+        return None, None
+    return (newest - start[0]).total_seconds() / 60.0, start[1]
 
 
 def recent_hours(rows, tz, hours=3):
@@ -435,12 +474,15 @@ def index():
         for r in fc_rows[:3]
     ]
     v_obs, v_fallback = verdict_observation(obs, recent)
+    calm_minutes, calm_start = calm_streak(recent)
     verdict = kayak_verdict(
         (v_obs or {}).get("wind_mph"),
         (v_obs or {}).get("gust_mph"),
         (v_obs or {}).get("wind_dir"),
         next3,
         at=fmt_clock((v_obs or {}).get("ts"), tz) if v_fallback else None,
+        calm_minutes=calm_minutes,
+        calm_since=fmt_since(calm_start.get("ts"), tz) if calm_start else None,
     )
 
     starts, wind, gust = hourly_buckets(recent, 24)

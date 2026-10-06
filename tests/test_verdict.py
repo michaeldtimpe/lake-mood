@@ -4,6 +4,7 @@ import pytest
 
 from app.verdict import (
     c_to_f,
+    dead_flat,
     kayak_verdict,
     kmh_to_mph,
     m_to_mi,
@@ -187,3 +188,42 @@ def test_calm_wording_still_states_the_number():
 
 def test_calm_with_a_gust_keeps_both_numbers():
     assert kayak_verdict(0, 13, 90)["note"] == "calm (0) gusting 13."
+
+
+# ------------------------------------------------------------------ optimal
+
+@pytest.mark.parametrize("sustained,gust,flat", [
+    (0, None, True),
+    (4.9, 7.9, True),
+    (5, None, False),
+    (3, 8, False),
+    (None, 4, True),
+    (None, 6, False),
+    (None, None, False),
+])
+def test_dead_flat(sustained, gust, flat):
+    assert dead_flat(sustained, gust) is flat
+
+
+def test_verdict_optimal_after_a_held_calm():
+    v = kayak_verdict(0, None, calm_minutes=40, calm_since="5:35 am")
+    assert v["level"] == "optimal"
+    assert v["label"] == "optimal"
+    assert v["note"] == "calm (0 mph), no gusts · dead flat since 5:35 am."
+
+
+def test_verdict_optimal_needs_the_full_window():
+    assert kayak_verdict(0, None, calm_minutes=20)["level"] == "flat"
+    assert kayak_verdict(0, None)["level"] == "flat"
+
+
+def test_verdict_optimal_needs_this_reading_dead_flat():
+    # Flat, but 6 mph is above the dead-flat ceiling.
+    assert kayak_verdict(6, None, calm_minutes=60)["level"] == "flat"
+
+
+def test_verdict_storm_blocks_optimal():
+    stormy = [{"pop": 70, "wind_mph": 5, "hour_label": "3 pm"}]
+    v = kayak_verdict(0, None, forecast_hours=stormy, calm_minutes=60)
+    assert v["level"] == "flat"
+    assert v["storm_note"]

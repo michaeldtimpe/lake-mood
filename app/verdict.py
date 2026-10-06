@@ -94,6 +94,12 @@ _LEVELS = (
 )
 _WHITECAPS = ("whitecaps", "whitecaps")
 
+# "Optimal" is a held calm, not a single quiet reading: every observation for
+# at least OPTIMAL_MINUTES must sit under these, and no storm may be coming.
+DEAD_FLAT_SUSTAINED = 5.0
+DEAD_FLAT_GUST = 8.0
+OPTIMAL_MINUTES = 30
+
 STORM_POP = 40.0
 STORM_WIND_MPH = 20.0
 
@@ -135,8 +141,25 @@ def _storm_note(forecast_hours):
     return ""
 
 
+def dead_flat(sustained_mph, gust_mph=None):
+    """True if one reading is calm enough to count toward an optimal streak.
+
+    Same reading of the numbers as ``kayak_verdict``: a missing gust means the
+    sustained speed, a gust-only reading is held against both ceilings. A
+    reading with neither number is not evidence either way, so it is False.
+    """
+    if sustained_mph is None and gust_mph is None:
+        return False
+    if sustained_mph is None:
+        sustained = gust = float(gust_mph)
+    else:
+        sustained = float(sustained_mph)
+        gust = sustained if gust_mph is None else max(float(gust_mph), sustained)
+    return sustained < DEAD_FLAT_SUSTAINED and gust < DEAD_FLAT_GUST
+
+
 def kayak_verdict(sustained_mph, gust_mph=None, wind_dir=None, forecast_hours=None,
-                  at=None):
+                  at=None, calm_minutes=None, calm_since=None):
     """Judge whether Mountain Creek Lake is worth putting a boat on.
 
     ``wind_dir`` may be degrees or an already-named compass point.
@@ -153,6 +176,12 @@ def kayak_verdict(sustained_mph, gust_mph=None, wind_dir=None, forecast_hours=No
     is exactly what a kayaker needs, so it drives both thresholds on its own
     and the note reads ``wind variable, gusting 24.`` Only an observation
     with neither number is "no data".
+
+    ``calm_minutes`` is how long the station has read dead flat without a
+    break (see ``dead_flat``); ``calm_since`` is the clock time that streak
+    began. At ``OPTIMAL_MINUTES`` or more, with this reading itself dead flat
+    and no storm flag, the level becomes ``optimal`` and the note says since
+    when, e.g. ``calm (0 mph), no gusts · dead flat since 5:35 am.``
     """
     if sustained_mph is None and gust_mph is None:
         return {
@@ -204,6 +233,13 @@ def kayak_verdict(sustained_mph, gust_mph=None, wind_dir=None, forecast_hours=No
     base = f"{core} ({at} obs)." if at else f"{core}."
 
     storm = _storm_note(forecast_hours) if storm_flag(forecast_hours) else ""
+
+    if (not storm and calm_minutes is not None and calm_minutes >= OPTIMAL_MINUTES
+            and dead_flat(sustained_mph, gust_mph)):
+        level, label = "optimal", "optimal"
+        held = f"since {calm_since}" if calm_since else f"for {calm_minutes:.0f} min"
+        base = f"{base[:-1]} · dead flat {held}."
+
     note = f"{base} {storm}" if storm else base
 
     # `note` stays the whole sentence (JSON, tests, anything that wants one
